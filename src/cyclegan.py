@@ -1,11 +1,9 @@
 from __future__ import print_function, division
 
-import datetime
-import os
-
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from data_loader import DataLoader
 from keras.layers import Input, Dropout, Concatenate
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
@@ -13,26 +11,18 @@ from keras.models import Model
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 from tensorflow.keras.optimizers import Adam
 
-from src.data_loader import DataLoader
+from src.utils import *
 
 
 class CycleGAN:
-    def __init__(self, dataset_name, dataset_path, img_rows=128, img_cols=128, channels=3, learning_rate=0.0002,
-                 lambda_cycle=10.0):
+    def __init__(self, learning_rate=0.0002, lambda_cycle=10.0):
         # Input shape
-        self.img_rows = img_rows
-        self.img_cols = img_cols
-        self.channels = channels
-        self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Configure data loader
-        self.dataset_name = dataset_name
-        self.data_loader = DataLoader(dataset_name=self.dataset_name,
-                                      dataset_path=dataset_path,
-                                      img_res=(self.img_rows, self.img_cols))
+        self.data_loader = DataLoader()
 
         # Calculate output shape of D (PatchGAN)
-        patch = int(self.img_rows / 2 ** 4)
+        patch = int(alto / 2 ** 4)
         self.disc_patch = (patch, patch, 1)
 
         # Number of filters in the first layer of G and D
@@ -65,8 +55,8 @@ class CycleGAN:
         self.g_BA = self.build_generator()
 
         # Input images from both domains
-        img_A = Input(shape=self.img_shape)
-        img_B = Input(shape=self.img_shape)
+        img_A = Input(shape=forma)
+        img_B = Input(shape=forma)
 
         # Translate images to the other domain
         fake_B = self.g_AB(img_A)
@@ -120,7 +110,7 @@ class CycleGAN:
             return u
 
         # Image input
-        d0 = Input(shape=self.img_shape)
+        d0 = Input(shape=forma)
 
         # Downsampling
         d1 = conv2d(d0, self.gf)
@@ -134,7 +124,7 @@ class CycleGAN:
         u3 = deconv2d(u2, d1, self.gf)
 
         u4 = UpSampling2D(size=2)(u3)
-        output_img = Conv2D(self.channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u4)
+        output_img = Conv2D(canales, kernel_size=4, strides=1, padding='same', activation='tanh')(u4)
 
         return Model(d0, output_img)
 
@@ -148,7 +138,7 @@ class CycleGAN:
                 d = InstanceNormalization()(d)
             return d
 
-        img = Input(shape=self.img_shape)
+        img = Input(shape=forma)
 
         d1 = d_layer(img, self.df, normalization=False)
         d2 = d_layer(d1, self.df * 2)
@@ -159,21 +149,18 @@ class CycleGAN:
 
         return Model(img, validity)
 
-    def train(self, epochs, directorio_checkpoints, directorio_fotos, batch_size=1,
-              sample_interval=50):
+    def train(self, epochs, batch_size=1):
 
         config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
 
-        start_time = datetime.datetime.now()
+        start_time = timestamp()
 
         # Adversarial loss ground truths
         valid = np.ones((batch_size,) + self.disc_patch)
         fake = np.zeros((batch_size,) + self.disc_patch)
 
         for epoch in range(epochs):
-            self.guardar_modelo(directorio_checkpoints, epoch)
-
             for batch_i, (imgs_A, imgs_B) in enumerate(self.data_loader.load_batch(batch_size)):
                 # ----------------------
                 #  Train Discriminators
@@ -205,27 +192,27 @@ class CycleGAN:
                                                        imgs_A, imgs_B,
                                                        imgs_A, imgs_B])
 
-                elapsed_time = datetime.datetime.now() - start_time
+            elapsed_time = timestamp() - start_time
 
-                # If at save interval => save generated image samples
-                if batch_i % sample_interval == 0:
-                    # Plot the progress
-                    print(
-                        "[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, "
-                        "id: %05f] time: %s "
-                        % (epoch, epochs,
-                           batch_i, self.data_loader.n_batches,
-                           d_loss[0], 100 * d_loss[1],
-                           g_loss[0],
-                           np.mean(g_loss[1:3]),
-                           np.mean(g_loss[3:5]),
-                           np.mean(g_loss[5:6]),
-                           elapsed_time))
+            # Plot the progress
+            print(
+                "[Epoch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, "
+                "id: %05f] time: %s "
+                % (epoch, epochs,
+                   d_loss[0], 100 * d_loss[1],
+                   g_loss[0],
+                   np.mean(g_loss[1:3]),
+                   np.mean(g_loss[3:5]),
+                   np.mean(g_loss[5:6]),
+                   elapsed_time))
 
-                    self.sample_images(directorio_fotos, epoch, batch_i)
+            self.sample_images(ruta_checkpoints_imagenes, str(epoch))
+            self.guardar_modelo(ruta_checkpoints_modelo, str(epoch))
 
-    def sample_images(self, directorio_fotos, epoch, batch_i):
-        os.makedirs(directorio_fotos + "/" + self.dataset_name, exist_ok=True)
+        self.sample_images(ruta_imagenes, timestamp_fancy())
+        self.guardar_modelo(ruta_modelo, timestamp_fancy())
+
+    def sample_images(self, directorio, texto):
         r, c = 2, 3
 
         imgs_A = self.data_loader.load_data(domain="A", batch_size=1, is_testing=True)
@@ -256,17 +243,8 @@ class CycleGAN:
                 axs[i, j].set_title(titles[j])
                 axs[i, j].axis('off')
                 cnt += 1
-        fig.savefig(directorio_fotos + "/%s/%d_%d.png" % (self.dataset_name, epoch, batch_i))
+        fig.savefig(directorio + sep + texto + ".png")
         plt.close()
 
-    def guardar_modelo(self, directorio_checkpoints, epoch):
-        directorio_checkpoints_actual = directorio_checkpoints + "/" + self.dataset_name
-        os.makedirs(directorio_checkpoints_actual, exist_ok=True)
-        self.combined.save(directorio_checkpoints_actual + "/epoch{}.h5".format(epoch))
-
-
-if __name__ == '__main__':
-    gan = CycleGAN(dataset_name='monet2photo', dataset_path="./datasets")
-    gan.train(directorio_checkpoints="modelos", directorio_fotos="images",
-              epochs=200, batch_size=1, sample_interval=500)
-
+    def guardar_modelo(self, directorio, texto):
+        self.combined.save(directorio + sep + texto + ".h5")
