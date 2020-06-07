@@ -13,23 +13,17 @@ from keras.models import Model
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 from tensorflow.keras.optimizers import Adam
 
-from src.data_loader import DataLoader
+import constantes as ctes
+from lector_dataset import LectorDataset
 
 
 class CycleGAN:
-    def __init__(self, dataset_name, dataset_path, img_rows=128, img_cols=128, channels=3, learning_rate=0.0002,
-                 lambda_cycle=10.0):
+    def __init__(self, img_rows=128, img_cols=128, channels=3, learning_rate=0.0002, lambda_cycle=10.0):
         # Input shape
         self.img_rows = img_rows
         self.img_cols = img_cols
         self.channels = channels
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
-
-        # Configure data loader
-        self.dataset_name = dataset_name
-        self.data_loader = DataLoader(dataset_name=self.dataset_name,
-                                      dataset_path=dataset_path,
-                                      img_res=(self.img_rows, self.img_cols))
 
         # Calculate output shape of D (PatchGAN)
         patch = int(self.img_rows / 2 ** 4)
@@ -159,8 +153,9 @@ class CycleGAN:
 
         return Model(img, validity)
 
-    def train(self, epochs, directorio_checkpoints, directorio_fotos, batch_size=1,
-              sample_interval=50):
+    def train(self, epochs, batch_size=1):
+
+        lector_datos = LectorDataset()
 
         config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
@@ -172,16 +167,16 @@ class CycleGAN:
         fake = np.zeros((batch_size,) + self.disc_patch)
 
         for epoch in range(epochs):
-            self.guardar_modelo(directorio_checkpoints, epoch)
-
-            for batch_i, (imgs_A, imgs_B) in enumerate(self.data_loader.load_batch(batch_size)):
+            # for paquete_A, paquete_B in lector_datos.obtener_imagenes_entreno():
+            #   for indice, (imgs_A, imgs_B) in enumerate(zip(paquete_A, paquete_B)):
+            for indice, (imgs_A, imgs_B) in enumerate(lector_datos.obtener_imagenes_entreno()):
                 # ----------------------
                 #  Train Discriminators
                 # ----------------------
 
                 # Translate images to opposite domain
-                fake_B = self.g_AB.predict(imgs_A)
-                fake_A = self.g_BA.predict(imgs_B)
+                fake_B = self.g_AB.predict(imgs_A, steps=batch_size)
+                fake_A = self.g_BA.predict(imgs_B, steps=batch_size)
 
                 # Train the discriminators (original images = real / translated = Fake)
                 dA_loss_real = self.d_A.train_on_batch(imgs_A, valid)
@@ -205,39 +200,31 @@ class CycleGAN:
                                                        imgs_A, imgs_B,
                                                        imgs_A, imgs_B])
 
-                elapsed_time = datetime.datetime.now() - start_time
+            elapsed_time = datetime.datetime.now() - start_time
+            self.guardar_modelo(epoch)
+            print(
+                "[Epoch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, "
+                "id: %05f] time: %s "
+                % (epoch, epochs,
+                   d_loss[0], 100 * d_loss[1],
+                   g_loss[0],
+                   np.mean(g_loss[1:3]),
+                   np.mean(g_loss[3:5]),
+                   np.mean(g_loss[5:6]),
+                   elapsed_time))
 
-                # If at save interval => save generated image samples
-                if batch_i % sample_interval == 0:
-                    # Plot the progress
-                    print(
-                        "[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, "
-                        "id: %05f] time: %s "
-                        % (epoch, epochs,
-                           batch_i, self.data_loader.n_batches,
-                           d_loss[0], 100 * d_loss[1],
-                           g_loss[0],
-                           np.mean(g_loss[1:3]),
-                           np.mean(g_loss[3:5]),
-                           np.mean(g_loss[5:6]),
-                           elapsed_time))
+        self.sample_images(epoch, lector_datos)
 
-                    self.sample_images(directorio_fotos, epoch, batch_i)
-
-    def sample_images(self, directorio_fotos, epoch, batch_i):
-        os.makedirs(directorio_fotos + "/" + self.dataset_name, exist_ok=True)
+    def sample_images(self, epoch, lector_datos):
+        os.makedirs(ctes.ruta_imagenes, exist_ok=True)
         r, c = 2, 3
 
-        imgs_A = self.data_loader.load_data(domain="A", batch_size=1, is_testing=True)
-        imgs_B = self.data_loader.load_data(domain="B", batch_size=1, is_testing=True)
-
-        # Demo (for GIF)
-        # imgs_A = self.data_loader.load_img('datasets/apple2orange/testA/n07740461_1541.jpg')
-        # imgs_B = self.data_loader.load_img('datasets/apple2orange/testB/n07749192_4241.jpg')
+        # Demo
+        (imgs_A, imgs_B) = lector_datos.obtener_imagenes_muestra()
 
         # Translate images to the other domain
-        fake_B = self.g_AB.predict(imgs_A)
-        fake_A = self.g_BA.predict(imgs_B)
+        fake_B = self.g_AB.predict(np.array(imgs_A))
+        fake_A = self.g_BA.predict(np.array(imgs_B))
         # Translate back to original domain
         reconstr_A = self.g_BA.predict(fake_B)
         reconstr_B = self.g_AB.predict(fake_A)
@@ -256,17 +243,11 @@ class CycleGAN:
                 axs[i, j].set_title(titles[j])
                 axs[i, j].axis('off')
                 cnt += 1
-        fig.savefig(directorio_fotos + "/%s/%d_%d.png" % (self.dataset_name, epoch, batch_i))
+
+        fig.savefig(ctes.ruta_imagenes + "\\epoch{}.png".format(epoch))
+
         plt.close()
 
-    def guardar_modelo(self, directorio_checkpoints, epoch):
-        directorio_checkpoints_actual = directorio_checkpoints + "/" + self.dataset_name
-        os.makedirs(directorio_checkpoints_actual, exist_ok=True)
-        self.combined.save(directorio_checkpoints_actual + "/epoch{}.h5".format(epoch))
-
-
-if __name__ == '__main__':
-    gan = CycleGAN(dataset_name='monet2photo', dataset_path="./datasets")
-    gan.train(directorio_checkpoints="modelos", directorio_fotos="images",
-              epochs=200, batch_size=1, sample_interval=500)
-
+    def guardar_modelo(self, epoch):
+        os.makedirs(ctes.ruta_modelo, exist_ok=True)
+        self.combined.save(ctes.ruta_modelo + "\\epoch{}.h5".format(epoch))
