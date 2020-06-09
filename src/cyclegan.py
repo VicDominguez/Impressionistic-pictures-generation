@@ -9,6 +9,7 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Model
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
+from keras.callbacks import TensorBoard
 from tensorflow.keras.optimizers import Adam
 
 from src.utils import *
@@ -151,6 +152,15 @@ class CycleGAN:
 
     def train(self, epochs, batch_size=1):
 
+        tensorboard = TensorBoard(
+            log_dir=ruta_logs,
+            histogram_freq=0,
+            batch_size=batch_size,
+            write_graph=True,
+            write_grads=True
+        )
+        tensorboard.set_model(self.combined)
+
         config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
 
@@ -190,7 +200,7 @@ class CycleGAN:
                 g_loss = self.combined.train_on_batch([imgs_A, imgs_B],
                                                       [valid, valid,
                                                        imgs_A, imgs_B,
-                                                       imgs_A, imgs_B])
+                                                       imgs_A, imgs_B],)
 
             elapsed_time = timestamp() - start_time
 
@@ -208,9 +218,16 @@ class CycleGAN:
 
             self.sample_images(ruta_checkpoints_imagenes, str(epoch))
             self.guardar_modelo(ruta_checkpoints_modelo, str(epoch))
+            tensorboard.on_epoch_end(epoch, self.named_logs(g_loss))
 
         self.sample_images(ruta_imagenes, timestamp_fancy())
         self.guardar_modelo(ruta_modelo, timestamp_fancy())
+
+    def named_logs(self, logs):
+        result = {}
+        for l in zip(self.combined.metrics_names, logs):
+            result[l[0]] = l[1]
+        return result
 
     def sample_images(self, directorio, texto):
         r, c = 2, 3

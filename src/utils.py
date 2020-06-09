@@ -26,6 +26,7 @@ ruta_imagenes = obtener_directorio_absoluto(sep + "imagenes") + sep + dataset
 ruta_modelo = obtener_directorio_absoluto(sep + "modelos") + sep + dataset
 ruta_checkpoints_imagenes = obtener_directorio_absoluto(sep + "imagenes_test") + sep + dataset + sep + momento_inicio
 ruta_checkpoints_modelo = obtener_directorio_absoluto(sep + "checkpoints") + sep + dataset + sep + momento_inicio
+ruta_logs = obtener_directorio_absoluto(sep + "logs") + sep + dataset + sep + momento_inicio
 
 imagen_muestra_pintor = ruta_dataset + sep + "testA" + sep + "00960.jpg"
 imagen_muestra_real = ruta_dataset + sep + "testB" + sep + "2014-08-15 08_48_43.jpg"
@@ -40,3 +41,4 @@ os.makedirs(ruta_checkpoints_imagenes, exist_ok=True)
 os.makedirs(ruta_checkpoints_modelo, exist_ok=True)
 os.makedirs(ruta_imagenes, exist_ok=True)
 os.makedirs(ruta_modelo, exist_ok=True)
+os.makedirs(ruta_logs, exist_ok=True)
