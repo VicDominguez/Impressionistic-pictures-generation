@@ -8,6 +8,8 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
+venv/
+.idea/
 build/
 develop-eggs/
 dist/
@@ -55,3 +57,10 @@ docs/_build/
 
 # PyBuilder
 target/
+
+#Caracteristicos del proyecto
+checkpoints/
+datasets/
+imagenes/
+imagenes_test/
+logs/
