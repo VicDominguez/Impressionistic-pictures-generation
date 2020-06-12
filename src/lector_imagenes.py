@@ -2,6 +2,7 @@ import imageio
 from glob import glob
 import numpy as np
 import skimage.transform
+import os
 
 from constantes import Constantes
 
@@ -15,11 +16,26 @@ class LectorImagenes:
             LectorImagenes.__instance = object.__new__(cls)
         return LectorImagenes.__instance
 
-    def load_batch(self, batch_size=1, is_testing=False):
-        data_type = "train" if not is_testing else "val"
+    def get_n_batches(self, batch_size=1, is_training=True, maximo_instancias=None):
+        data_type = "train" if is_training else "test"
+        path_A = os.listdir(self.constantes.ruta_dataset + '/%sA/' % data_type)
+        path_B = os.listdir(self.constantes.ruta_dataset + '/%sB/' % data_type)
+        if maximo_instancias is None:
+            instancias = min(len(path_A), len(path_B))
+        else:
+            instancias = min(len(path_A), len(path_B), maximo_instancias)
+        return int(instancias / batch_size)
+
+    def load_batch(self, batch_size=1, is_training=True, maximo_instancias=None):
+        data_type = "train" if is_training else "test"
         path_A = glob(self.constantes.ruta_dataset + '/%sA/*' % data_type)
         path_B = glob(self.constantes.ruta_dataset + '/%sB/*' % data_type)
-        n_batches = int(min(len(path_A), len(path_B)) / batch_size)
+
+        if maximo_instancias is None:
+            instancias = min(len(path_A), len(path_B))
+        else:
+            instancias = min(len(path_A), len(path_B), maximo_instancias)
+        n_batches = int(instancias / batch_size)
         total_samples = n_batches * batch_size
 
         # Sample n_batches * batch_size from each path list so that model sees all

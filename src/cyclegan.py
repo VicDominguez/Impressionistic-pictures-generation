@@ -8,8 +8,8 @@ from keras.layers import Input, Dropout, Concatenate
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Model
+from keras.models import load_model
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
-from keras.callbacks import TensorBoard
 from tensorflow.keras.optimizers import Adam
 
 import funciones
@@ -24,6 +24,7 @@ class CycleGAN:
         # Crear lector de datos y constantes
         self.lector_imagenes = LectorImagenes()
         self.constantes = Constantes()
+        self.modelo_entrenado = False
 
         # Calculate output shape of D (PatchGAN)
         patch = int(self.constantes.alto / 2 ** 4)
@@ -155,15 +156,10 @@ class CycleGAN:
 
     def train(self, epochs, batch_size=1):
 
-        tensorboard = TensorBoard(
-            log_dir=self.constantes.ruta_logs,
-            histogram_freq=0,
-            write_graph=True,
-        )
-        tensorboard.set_model(self.modelo)
-
         config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+
+        writer_train = tf.summary.create_file_writer(self.constantes.ruta_logs_train)
 
         start_time = funciones.timestamp()
 
@@ -172,6 +168,9 @@ class CycleGAN:
         fake = np.zeros((batch_size,) + self.disc_patch)
 
         for epoch in range(epochs):
+            n_batches = self.lector_imagenes.get_n_batches(batch_size)
+            d_losses = np.empty([n_batches, 2])
+            g_losses = np.empty([n_batches, 7])
             for batch_i, (imgs_A, imgs_B) in enumerate(self.lector_imagenes.load_batch(batch_size)):
                 # ----------------------
                 #  Train Discriminators
@@ -200,30 +199,67 @@ class CycleGAN:
                 g_loss = self.modelo.train_on_batch([imgs_A, imgs_B],
                                                     [valid, valid,
                                                      imgs_A, imgs_B,
-                                                     imgs_A, imgs_B], )
+                                                     imgs_A, imgs_B])
 
-            elapsed_time = funciones.timestamp() - start_time
+                d_losses[batch_i] = d_loss
+                g_losses[batch_i] = g_loss
 
-            metricas = self._hacer_metricas(d_loss, g_loss)
-            # Plot the progress
-            print(
-                "[Epoch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, "
-                "id: %05f] time: %s "
-                % (epoch, epochs,
-                   metricas.get("D loss"),
-                   metricas.get("D loss acc"),
-                   metricas.get("G loss"),
-                   metricas.get("G loss adv"),
-                   metricas.get("G loss recon"),
-                   metricas.get("G loss id"),
-                   elapsed_time))
+            self.escribir_metricas_perdidas(d_losses, g_losses, writer_train, epoch)
+
+            start_time_test = funciones.timestamp()
+            elapsed_time_train = start_time_test - start_time
+
+            self.test(epoch)
+
+            elapsed_time_test = funciones.timestamp() - start_time_test
+
+            print("[Epoch %d/%d] time training: %s time testing: %s " % (
+                epoch, epochs, elapsed_time_train, elapsed_time_test))
 
             self._sample_images(epoch)
             self._guardar_modelo(self.constantes.ruta_checkpoints_modelo, str(epoch))
-            tensorboard.on_epoch_end(epoch, metricas)
 
         self._final_images(self.constantes.ruta_imagenes, funciones.timestamp_fancy())
         self._guardar_modelo(self.constantes.ruta_modelo, funciones.timestamp_fancy())
+
+        self.modelo_entrenado = True
+
+    def test(self, step):
+        writer_test = tf.summary.create_file_writer(self.constantes.ruta_logs_test)
+        batch_size = 32
+        # Adversarial loss ground truths
+        valid = np.ones((batch_size,) + self.disc_patch)
+        fake = np.zeros((batch_size,) + self.disc_patch)
+
+        n_batches = self.lector_imagenes.get_n_batches(batch_size)
+        d_losses = np.empty([n_batches, 2])
+        g_losses = np.empty([n_batches, 7])
+
+        for batch_i, (imgs_A, imgs_B) in enumerate(self.lector_imagenes.load_batch(batch_size, is_training=False)):
+            fake_B = self.g_AB.predict(imgs_A)
+            fake_A = self.g_BA.predict(imgs_B)
+
+            # Train the discriminators (original images = real / translated = Fake)
+            dA_loss_real = self.d_A.test_on_batch(imgs_A, valid)
+            dA_loss_fake = self.d_A.test_on_batch(fake_A, fake)
+            dA_loss = 0.5 * np.add(dA_loss_real, dA_loss_fake)
+
+            dB_loss_real = self.d_B.test_on_batch(imgs_B, valid)
+            dB_loss_fake = self.d_B.test_on_batch(fake_B, fake)
+            dB_loss = 0.5 * np.add(dB_loss_real, dB_loss_fake)
+
+            # Total disciminator loss
+            d_loss = 0.5 * np.add(dA_loss, dB_loss)
+
+            g_loss = self.modelo.test_on_batch([imgs_A, imgs_B],
+                                               [valid, valid,
+                                                imgs_A, imgs_B,
+                                                imgs_A, imgs_B])
+
+            d_losses[batch_i] = d_loss
+            g_losses[batch_i] = g_loss
+
+        self.escribir_metricas_perdidas(d_losses, g_losses, writer_test, step)
 
     def _sample_images(self, epoch):
 
@@ -284,12 +320,41 @@ class CycleGAN:
         self.modelo.save(directorio + self.constantes.sep + texto + ".h5")
 
     @staticmethod
-    def _hacer_metricas(d_loss, g_loss):
-        return {
-            "D loss": d_loss[0],
-            "D loss acc": 100 * d_loss[1],
-            "G loss": g_loss[0],
-            "G loss adv": np.mean(g_loss[1:3]),
-            "G loss recon": np.mean(g_loss[3:5]),
-            "G loss id": np.mean(g_loss[5:6])
-        }
+    def escribir_metricas_perdidas(d_losses, g_losses, writer, step):
+        d_loss = d_losses[:, 0]
+        d_loss_acc = 100 * d_losses[:, 1]
+        g_loss = g_losses[:, 0]
+        g_loss_adv = g_losses[:, 1:3]
+        g_loss_recon = g_losses[:, 3:5]
+        g_loss_id = g_losses[:, 5:6]
+
+        with writer.as_default():
+            tf.summary.scalar("d_loss mean", np.mean(d_loss), step=step)
+            tf.summary.scalar("d_loss_acc mean", np.mean(d_loss_acc), step=step)
+            tf.summary.scalar("g_loss mean", np.mean(g_loss), step=step)
+            tf.summary.scalar("g_loss_adv mean", np.mean(g_loss_adv), step=step)
+            tf.summary.scalar("g_loss_recon mean", np.mean(g_loss_recon), step=step)
+            tf.summary.scalar("g_loss_id mean", np.mean(g_loss_id), step=step)
+            tf.summary.scalar("d_loss std", np.std(d_loss), step=step)
+            tf.summary.scalar("d_loss_acc std", np.std(d_loss_acc), step=step)
+            tf.summary.scalar("g_loss std", np.std(g_loss), step=step)
+            tf.summary.scalar("g_loss_adv std", np.std(g_loss_adv), step=step)
+            tf.summary.scalar("g_loss_recon std", np.std(g_loss_recon), step=step)
+            tf.summary.scalar("g_loss_id std", np.std(g_loss_id), step=step)
+            writer.flush()
+
+    def load_model(self, ruta):
+        self.modelo = load_model(ruta)
+
+    def crear_imagen(self, ruta, ruta_modelo=None, pintar_cuadro=True):
+        if not self.modelo_entrenado:
+            if ruta_modelo is not None:
+                self.load_model(ruta_modelo)
+            else:
+                print("No hay modelo entrenado para generar la imagen")
+        imagen = self.lector_imagenes.load_single_img(ruta)
+        if pintar_cuadro:
+            resultado = self.g_AB.predict(imagen)
+        else:
+            resultado = self.g_BA.predict(imagen)
+        return resultado

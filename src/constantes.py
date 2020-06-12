@@ -18,6 +18,10 @@ class Constantes(object):
         sep, "checkpoints") + sep + dataset + sep + momento_inicio
     ruta_logs = funciones.obtener_directorio_absoluto(
         sep, "logs") + sep + dataset + sep + momento_inicio
+    ruta_logs_train = funciones.obtener_directorio_absoluto(
+        sep, "logs") + sep + dataset + sep + momento_inicio + sep + "train" + sep
+    ruta_logs_test = funciones.obtener_directorio_absoluto(
+        sep, "logs") + sep + dataset + sep + momento_inicio + sep + "test" + sep
 
     bucket_gcp = "gs://tfg-impresionismo/"
 
