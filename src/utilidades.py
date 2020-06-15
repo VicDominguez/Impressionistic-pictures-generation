@@ -20,7 +20,7 @@ def obtener_rutas_imagenes(ruta, expresion_regular='*.jpg'):
 
 def _ruta_a_string(path):
     """Convertir archivo del tipo Path a un string con la ruta absoluta."""
-    return str(path.absolute())
+    return str(path.resolve())
 
 
 class Utilidades:
@@ -89,6 +89,18 @@ class Utilidades:
 
     def obtener_rutas_imagenes_test_real(self):
         return obtener_rutas_imagenes(self._ruta_dataset_test_real)
+
+    def obtener_ruta_train_pintor(self):
+        return _ruta_a_string(self._ruta_dataset_train_pintor)
+
+    def obtener_ruta_train_real(self):
+        return _ruta_a_string(self._ruta_dataset_train_real)
+
+    def obtener_ruta_test_pintor(self):
+        return _ruta_a_string(self._ruta_dataset_test_pintor)
+
+    def obtener_ruta_test_real(self):
+        return _ruta_a_string(self._ruta_dataset_test_real)
 
     def obtener_ruta_logs(self):
         return _ruta_a_string(self._ruta_logs)
