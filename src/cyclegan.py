@@ -153,7 +153,7 @@ class CycleGAN:
 
         writer_train = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_train())
 
-        start_time = timestamp()
+        start_time_train = timestamp()
 
         # Adversarial loss ground truths
         valid = np.ones((batch_size,) + self.disc_patch)
@@ -163,55 +163,24 @@ class CycleGAN:
         imagen_muestra_real = lector_imagenes.obtener_imagen_muestra_real().numpy()
 
         for epoch in range(epochs):
+            start_time_epoch = timestamp()
             n_batches = lector_imagenes.get_n_batches(batch_size)
             d_losses = np.empty([n_batches, 2])
             g_losses = np.empty([n_batches, 7])
             for batch_i, (imgs_A, imgs_B) in enumerate(lector_imagenes.load_batch()):
-                imgs_A = imgs_A.numpy()
-                imgs_B = imgs_B.numpy()
-                # ----------------------
-                #  Train Discriminators
-                # ----------------------
-                # Translate images to opposite domain
-                fake_B = self.g_AB.predict(imgs_A)
-                fake_A = self.g_BA.predict(imgs_B)
-
-                # Train the discriminators (original images = real / translated = Fake)
-                dA_loss_real = self.d_A.train_on_batch(imgs_A, valid)
-                dA_loss_fake = self.d_A.train_on_batch(fake_A, fake)
-                dA_loss = 0.5 * np.add(dA_loss_real, dA_loss_fake)
-
-                dB_loss_real = self.d_B.train_on_batch(imgs_B, valid)
-                dB_loss_fake = self.d_B.train_on_batch(fake_B, fake)
-                dB_loss = 0.5 * np.add(dB_loss_real, dB_loss_fake)
-
-                # Total disciminator loss
-                d_loss = 0.5 * np.add(dA_loss, dB_loss)
-
-                # ------------------
-                #  Train Generators
-                # ------------------
-
-                # Train the generators
-                g_loss = self.modelo.train_on_batch([imgs_A, imgs_B],
-                                                    [valid, valid,
-                                                     imgs_A, imgs_B,
-                                                     imgs_A, imgs_B])
-
-                d_losses[batch_i] = d_loss
-                g_losses[batch_i] = g_loss
+                d_losses[batch_i],  g_losses[batch_i] = self._train_step(imgs_A.numpy(), imgs_B.numpy(), valid, fake)
 
             self.escribir_metricas_perdidas(d_losses, g_losses, writer_train, epoch)
 
             start_time_test = timestamp()
-            elapsed_time_train = start_time_test - start_time
+            elapsed_time_train = start_time_test - start_time_epoch
 
             self.test(epoch, lector_imagenes)
 
             elapsed_time_test = timestamp() - start_time_test
 
-            self.logger.info("[Epoch %d/%d] time training: %s time testing: %s " % (
-                epoch, epochs, elapsed_time_train, elapsed_time_test))
+            self.logger.info("[Epoch %d/%d] time training: %s time testing: %s Total time %s" % (
+                epoch, epochs, elapsed_time_train, elapsed_time_test, (timestamp() - start_time_train)))
 
             self._sample_images(epoch, imagen_muestra_pintor, imagen_muestra_real)
 
@@ -219,6 +188,38 @@ class CycleGAN:
         self._guardar_modelo(timestamp_fancy())
 
         self.modelo_entrenado = True
+
+    def _train_step(self, imgs_A, imgs_B, valid, fake):
+        # ----------------------
+        #  Train Discriminators
+        # ----------------------
+        # Translate images to opposite domain
+        fake_B = self.g_AB.predict(imgs_A)
+        fake_A = self.g_BA.predict(imgs_B)
+
+        # Train the discriminators (original images = real / translated = Fake)
+        dA_loss_real = self.d_A.train_on_batch(imgs_A, valid)
+        dA_loss_fake = self.d_A.train_on_batch(fake_A, fake)
+        dA_loss = 0.5 * np.add(dA_loss_real, dA_loss_fake)
+
+        dB_loss_real = self.d_B.train_on_batch(imgs_B, valid)
+        dB_loss_fake = self.d_B.train_on_batch(fake_B, fake)
+        dB_loss = 0.5 * np.add(dB_loss_real, dB_loss_fake)
+
+        # Total disciminator loss
+        d_loss = 0.5 * np.add(dA_loss, dB_loss)
+
+        # ------------------
+        #  Train Generators
+        # ------------------
+
+        # Train the generators
+        g_loss = self.modelo.train_on_batch([imgs_A, imgs_B],
+                                            [valid, valid,
+                                             imgs_A, imgs_B,
+                                             imgs_A, imgs_B])
+
+        return d_loss, g_loss
 
     def test(self, step, lector_imagenes):
         writer_test = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_test())
