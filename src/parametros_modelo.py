@@ -10,3 +10,6 @@ lambda_id = 0.1 * lambda_cycle  # Identity loss
 ancho = 128
 alto = 128
 canales = 3
+
+batch_size_train = 1
+batch_size_test = 32

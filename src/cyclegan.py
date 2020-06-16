@@ -76,13 +76,14 @@ def _build_discriminator():
 
 
 class CycleGAN:
-    __slots__ = ['modelo_entrenado', 'disc_patch', 'd_A', 'd_B', 'g_AB', 'g_BA', 'modelo', 'utils']
+    __slots__ = ['modelo_entrenado', 'disc_patch', 'd_A', 'd_B', 'g_AB', 'g_BA', 'modelo', 'utils', 'logger']
 
     def __init__(self):
 
         self.modelo_entrenado = False
 
         self.utils = Utilidades()
+        self.logger = self.utils.obtener_logger("cyclegan")
 
         # Calculate output shape of D (PatchGAN)
         patch = int(alto / 2 ** 4)
@@ -144,10 +145,11 @@ class CycleGAN:
                                           lambda_id, lambda_id],
                             optimizer=optimizer)
 
-    def train(self, lector_imagenes, epochs=300, batch_size=1):
+    def train(self, lector_imagenes, epochs=300):
 
-        config = tf.compat.v1.ConfigProto()
-        config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+        batch_size = batch_size_train
+        # config = tf.compat.v1.ConfigProto()
+        # config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
 
         writer_train = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_train())
 
@@ -157,14 +159,16 @@ class CycleGAN:
         valid = np.ones((batch_size,) + self.disc_patch)
         fake = np.zeros((batch_size,) + self.disc_patch)
 
-        imagen_muestra_pintor = lector_imagenes.obtener_imagen_muestra_pintor()
-        imagen_muestra_real = lector_imagenes.obtener_imagen_muestra_real()
+        imagen_muestra_pintor = lector_imagenes.obtener_imagen_muestra_pintor().numpy()
+        imagen_muestra_real = lector_imagenes.obtener_imagen_muestra_real().numpy()
 
         for epoch in range(epochs):
             n_batches = lector_imagenes.get_n_batches(batch_size)
             d_losses = np.empty([n_batches, 2])
             g_losses = np.empty([n_batches, 7])
-            for batch_i, (imgs_A, imgs_B) in enumerate(lector_imagenes.load_batch(batch_size)):
+            for batch_i, (imgs_A, imgs_B) in enumerate(lector_imagenes.load_batch()):
+                imgs_A = imgs_A.numpy()
+                imgs_B = imgs_B.numpy()
                 # ----------------------
                 #  Train Discriminators
                 # ----------------------
@@ -206,7 +210,7 @@ class CycleGAN:
 
             elapsed_time_test = timestamp() - start_time_test
 
-            print("[Epoch %d/%d] time training: %s time testing: %s " % (
+            self.logger.info("[Epoch %d/%d] time training: %s time testing: %s " % (
                 epoch, epochs, elapsed_time_train, elapsed_time_test))
 
             self._sample_images(epoch, imagen_muestra_pintor, imagen_muestra_real)
@@ -218,7 +222,7 @@ class CycleGAN:
 
     def test(self, step, lector_imagenes):
         writer_test = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_test())
-        batch_size = 32
+        batch_size = batch_size_test
         # Adversarial loss ground truths
         valid = np.ones((batch_size,) + self.disc_patch)
         fake = np.zeros((batch_size,) + self.disc_patch)
@@ -227,7 +231,9 @@ class CycleGAN:
         d_losses = np.empty([n_batches, 2])
         g_losses = np.empty([n_batches, 7])
 
-        for batch_i, (imgs_A, imgs_B) in enumerate(lector_imagenes.load_batch(batch_size, is_training=False)):
+        for batch_i, (imgs_A, imgs_B) in enumerate(lector_imagenes.load_batch(is_training=False)):
+            imgs_A = imgs_A.numpy()
+            imgs_B = imgs_B.numpy()
             fake_B = self.g_AB.predict(imgs_A)
             fake_A = self.g_BA.predict(imgs_B)
 
@@ -297,11 +303,11 @@ class CycleGAN:
                 axs[i, j].set_title(titles[j])
                 axs[i, j].axis('off')
                 cnt += 1
-        fig.savefig(self.utils.obtener_ruta_imagen_a_guardar(nombre))
+        fig.savefig(self.utils.obtener_archivo_imagen_a_guardar(nombre))
         plt.close()
 
     def _guardar_modelo(self, nombre):
-        self.modelo.save(self.utils.obtener_ruta_modelo_a_guardar(nombre))
+        self.modelo.save(self.utils.obtener_archivo_modelo_a_guardar(nombre))
 
     @staticmethod
     def escribir_metricas_perdidas(d_losses, g_losses, writer, step):
