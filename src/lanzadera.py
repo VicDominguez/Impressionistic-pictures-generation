@@ -1,6 +1,6 @@
-from src.cyclegan import CycleGAN
-from src.lector_imagenes import LectorImagenes
-from src.utilidades import Utilidades
+from cyclegan import CycleGAN
+from lector_imagenes import LectorImagenes
+from utilidades import Utilidades
 
 if __name__ == "__main__":
     utils = Utilidades()
@@ -18,5 +18,5 @@ if __name__ == "__main__":
     logger.info("Imágenes listas")
 
     logger.info("Comienzo del entrenamiento")
-    gan.train(LectorImagenes(), epochs=200)
+    gan.train(lector)
 

@@ -1,15 +1,8 @@
-# Number of filters in the first layer of G and D
-gf = 32
-df = 64
-learning_rate = 0.0002
-
-# Loss weights
-lambda_cycle = 10.0  # Cycle-consistency loss
-lambda_id = 0.1 * lambda_cycle  # Identity loss
-
-ancho = 128
-alto = 128
+tasa_aprendizaje = 0.0002
+parametro_lambda = 10.0
+ancho = 256
+alto = 256
 canales = 3
-
-batch_size_train = 1
-batch_size_test = 32
+epochs = 200
+tamanio_buffer = 1000
+tamanio_batch = 1

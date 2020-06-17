@@ -3,303 +3,300 @@ from __future__ import division, print_function
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from keras.layers import Concatenate, Dropout, Input
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import Conv2D, UpSampling2D
-from keras.models import load_model, Model
-from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
-from tensorflow.keras.optimizers import Adam
+from tensorflow_examples.models.pix2pix import pix2pix
 
-from src.parametros_modelo import *
-from src.utilidades import *
+from parametros_modelo import *
+from utilidades import *
 
 
-def _build_generator():
-    """U-Net Generator"""
-
-    def conv2d(layer_input, filters, f_size=4):
-        """Layers used during downsampling"""
-        d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
-        d = LeakyReLU(alpha=0.2)(d)
-        d = InstanceNormalization()(d)
-        return d
-
-    def deconv2d(layer_input, skip_input, filters, f_size=4, dropout_rate=0):
-        """Layers used during upsampling"""
-        u = UpSampling2D(size=2)(layer_input)
-        u = Conv2D(filters, kernel_size=f_size, strides=1, padding='same', activation='relu')(u)
-        if dropout_rate:
-            u = Dropout(dropout_rate)(u)
-        u = InstanceNormalization()(u)
-        u = Concatenate()([u, skip_input])
-        return u
-
-    # Image input
-    d0 = Input(shape=(ancho, alto, canales))
-
-    # Downsampling
-    d1 = conv2d(d0, gf)
-    d2 = conv2d(d1, gf * 2)
-    d3 = conv2d(d2, gf * 4)
-    d4 = conv2d(d3, gf * 8)
-
-    # Upsampling
-    u1 = deconv2d(d4, d3, gf * 4)
-    u2 = deconv2d(u1, d2, gf * 2)
-    u3 = deconv2d(u2, d1, gf)
-
-    u4 = UpSampling2D(size=2)(u3)
-    output_img = Conv2D(canales, kernel_size=4, strides=1, padding='same', activation='tanh')(u4)
-
-    return Model(d0, output_img)
+def calcular_error_ciclo(imagen_real, imagen_ciclada):
+    return parametro_lambda * tf.reduce_mean(tf.abs(imagen_real - imagen_ciclada))
 
 
-def _build_discriminator():
-    def d_layer(layer_input, filters, f_size=4, normalization=True):
-        """Discriminator layer"""
-        d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
-        d = LeakyReLU(alpha=0.2)(d)
-        if normalization:
-            d = InstanceNormalization()(d)
-        return d
-
-    img = Input(shape=(ancho, alto, canales))
-
-    d1 = d_layer(img, df, normalization=False)
-    d2 = d_layer(d1, df * 2)
-    d3 = d_layer(d2, df * 4)
-    d4 = d_layer(d3, df * 8)
-
-    validity = Conv2D(1, kernel_size=4, strides=1, padding='same')(d4)
-
-    return Model(img, validity)
+def calcular_error_identidad(imagen_real, misma_imagen):
+    return parametro_lambda * 0.5 * tf.reduce_mean(tf.abs(imagen_real - misma_imagen))
 
 
 class CycleGAN:
-    __slots__ = ['modelo_entrenado', 'disc_patch', 'd_A', 'd_B', 'g_AB', 'g_BA', 'modelo', 'utils', 'logger']
+    # TODO realizar slots
+    # __slots__ = ['modelo_entrenado', 'disc_patch', 'discriminador_A', 'discriminador_B', 'generador_foto',
+    # 'generador_pintor', 'modelo','utils', 'logger']
+
+    # TODO A es pintor, B es foto
 
     def __init__(self):
 
-        self.modelo_entrenado = False
+        tf.autograph.set_verbosity(2)
 
+        # TODO es necesario utils y logger?
         self.utils = Utilidades()
         self.logger = self.utils.obtener_logger("cyclegan")
 
-        # Calculate output shape of D (PatchGAN)
-        patch = int(alto / 2 ** 4)
-        self.disc_patch = (patch, patch, 1)
+        self.funcion_error = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
-        optimizer = Adam(learning_rate, 0.5)
+        self.generador_foto = pix2pix.unet_generator(canales, norm_type='instancenorm')
+        self.generador_pintor = pix2pix.unet_generator(canales, norm_type='instancenorm')
 
-        # Build and compile the discriminators
-        self.d_A = _build_discriminator()
-        self.d_B = _build_discriminator()
-        self.d_A.compile(loss='mse',
-                         optimizer=optimizer,
-                         metrics=['accuracy'])
-        self.d_B.compile(loss='mse',
-                         optimizer=optimizer,
-                         metrics=['accuracy'])
+        self.discriminador_pintor = pix2pix.discriminator(norm_type='instancenorm', target=False)
+        self.discriminador_foto = pix2pix.discriminator(norm_type='instancenorm', target=False)
 
-        # -------------------------
-        # Construct Computational
-        #   Graph of Generators
-        # -------------------------
+        self.optimizador_discriminador_pintor = tf.keras.optimizers.Adam(learning_rate=tasa_aprendizaje, beta_1=0.5)
+        self.optimizador_discriminador_foto = tf.keras.optimizers.Adam(learning_rate=tasa_aprendizaje, beta_1=0.5)
+        self.optimizador_generador_pintor = tf.keras.optimizers.Adam(learning_rate=tasa_aprendizaje, beta_1=0.5)
+        self.optimizador_generador_foto = tf.keras.optimizers.Adam(learning_rate=tasa_aprendizaje, beta_1=0.5)
 
-        # Build the generators
-        self.g_AB = _build_generator()
-        self.g_BA = _build_generator()
+        ckpt = tf.train.Checkpoint(generador_foto=self.generador_foto,
+                                   generador_pintor=self.generador_pintor,
+                                   discriminador_pintor=self.discriminador_pintor,
+                                   discriminador_foto=self.discriminador_foto,
+                                   optimizador_discriminador_pintor=self.optimizador_discriminador_pintor,
+                                   optimizador_discriminador_foto=self.optimizador_discriminador_foto,
+                                   optimizador_generador_pintor=self.optimizador_generador_pintor,
+                                   optimizador_generador_foto=self.optimizador_generador_foto)
 
-        # Input images from both domains
-        img_A = Input(shape=(ancho, alto, canales))
-        img_B = Input(shape=(ancho, alto, canales))
+        self.ckpt_manager = tf.train.CheckpointManager(ckpt, self.utils.obtener_ruta_checkpoints(), max_to_keep=5)
+        if self.ckpt_manager.latest_checkpoint:
+            ckpt.restore(self.ckpt_manager.latest_checkpoint)
+            self.logger("Punto de control restaurado")
 
-        # Translate images to the other domain
-        fake_B = self.g_AB(img_A)
-        fake_A = self.g_BA(img_B)
-        # Translate images back to original domain
-        reconstr_A = self.g_BA(fake_B)
-        reconstr_B = self.g_AB(fake_A)
-        # Identity mapping of images
-        img_A_id = self.g_BA(img_A)
-        img_B_id = self.g_AB(img_B)
+    def train(self, lector_imagenes):
 
-        # For the combined model we will only train the generators
-        self.d_A.trainable = False
-        self.d_B.trainable = False
-
-        # Discriminators determines validity of translated images
-        valid_A = self.d_A(fake_A)
-        valid_B = self.d_B(fake_B)
-
-        # Combined model trains generators to fool discriminators
-        self.modelo = Model(inputs=[img_A, img_B],
-                            outputs=[valid_A, valid_B,
-                                     reconstr_A, reconstr_B,
-                                     img_A_id, img_B_id])
-        self.modelo.compile(loss=['mse', 'mse',
-                                  'mae', 'mae',
-                                  'mae', 'mae'],
-                            loss_weights=[1, 1,
-                                          lambda_cycle, lambda_cycle,
-                                          lambda_id, lambda_id],
-                            optimizer=optimizer)
-
-    def train(self, lector_imagenes, epochs=300):
-
-        batch_size = batch_size_train
-        # config = tf.compat.v1.ConfigProto()
-        # config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-
+        comienzo_entrenamiento = timestamp()
         writer_train = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_train())
 
-        start_time_train = timestamp()
+        imagen_muestra_pintor = lector_imagenes.obtener_imagen_muestra_pintor()
+        imagen_muestra_foto = lector_imagenes.obtener_imagen_muestra_foto()
 
-        # Adversarial loss ground truths
-        valid = np.ones((batch_size,) + self.disc_patch)
-        fake = np.zeros((batch_size,) + self.disc_patch)
+        n_batches_train = lector_imagenes.calcular_n_batches(is_training=True)
+        n_batches_test = lector_imagenes.calcular_n_batches(is_training=False)
 
-        imagen_muestra_pintor = lector_imagenes.obtener_imagen_muestra_pintor().numpy()
-        imagen_muestra_real = lector_imagenes.obtener_imagen_muestra_real().numpy()
+        edp_train = np.ones(n_batches_train)
+        edf_train = np.ones(n_batches_train)
+        etgp_train = np.ones(n_batches_train)
+        etgf_train = np.ones(n_batches_train)
+        egp_train = np.ones(n_batches_train)
+        egf_train = np.ones(n_batches_train)
+        eigp_train = np.ones(n_batches_train)
+        eigf_train = np.ones(n_batches_train)
+        ect_train = np.ones(n_batches_train)
+
+        edp_test = np.ones(n_batches_test)
+        edf_test = np.ones(n_batches_test)
+        etgp_test = np.ones(n_batches_test)
+        etgf_test = np.ones(n_batches_test)
+        egp_test = np.ones(n_batches_test)
+        egf_test = np.ones(n_batches_test)
+        eigp_test = np.ones(n_batches_test)
+        eigf_test = np.ones(n_batches_test)
+        ect_test = np.ones(n_batches_test)
 
         for epoch in range(epochs):
-            start_time_epoch = timestamp()
-            n_batches = lector_imagenes.get_n_batches(batch_size)
-            d_losses = np.empty([n_batches, 2])
-            g_losses = np.empty([n_batches, 7])
-            for batch_i, (imgs_A, imgs_B) in enumerate(lector_imagenes.load_batch()):
-                d_losses[batch_i],  g_losses[batch_i] = self._train_step(imgs_A.numpy(), imgs_B.numpy(), valid, fake)
+            self.utils.copiar_logs_gcp()
+            comienzo_epoch = timestamp()
+            self.logger.info("epoch " + str(epoch))
+            for indice, (imagenes_pintor, imagenes_foto) in enumerate(lector_imagenes.cargar_batch()):
+                edp_train[indice], edf_train[indice], etgp_train[indice], etgf_train[indice], egp_train[indice], \
+                egf_train[indice], eigp_train[indice], eigf_train[indice], ect_train[indice] = self._train_step(
+                    imagenes_pintor, imagenes_foto)
 
-            self.escribir_metricas_perdidas(d_losses, g_losses, writer_train, epoch)
+                # TODO test
 
-            start_time_test = timestamp()
-            elapsed_time_train = start_time_test - start_time_epoch
+            fin_epoch = timestamp()
+            self.escribir_metricas_perdidas(edp_train, edf_train, etgp_train, etgf_train, egp_train, egf_train,
+                                            eigp_train, eigf_train, ect_train, writer_train, epoch)
+            self.imagenes_epoch(epoch, imagen_muestra_pintor, imagen_muestra_foto)
 
-            self.test(epoch, lector_imagenes)
+            if (epoch + 1) % 5 == 0:
+                ckpt_save_path = self.ckpt_manager.save()
+                self.logger.info('Guardando checkpoint para el epoch {} en {}'.format(epoch + 1, ckpt_save_path))
 
-            elapsed_time_test = timestamp() - start_time_test
+            self.logger.info(
+                'Tiempo transcurrido en el epoch {} es {} segundos'.format(epoch + 1, fin_epoch - comienzo_epoch))
 
-            self.logger.info("[Epoch %d/%d] time training: %s time testing: %s Total time %s" % (
-                epoch, epochs, elapsed_time_train, elapsed_time_test, (timestamp() - start_time_train)))
+        self._imagenes_final = self._images_final(timestamp_fancy(), imagen_muestra_pintor, imagen_muestra_foto)
 
-            self._sample_images(epoch, imagen_muestra_pintor, imagen_muestra_real)
+        # batch_size = batch_size_train
+        # # config = tf.compat.v1.ConfigProto()
+        # # config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+        #
+        # writer_train = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_train())
+        #
+        # start_time_train = timestamp()
+        #
+        # # Adversarial loss ground truths
+        # valid = np.ones((batch_size,) + self.disc_patch)
+        # fake = np.zeros((batch_size,) + self.disc_patch)
+        #
+        # imagen_muestra_pintor = lector_imagenes.obtener_imagen_muestra_pintor().numpy()
+        # imagen_muestra_foto = lector_imagenes.obtener_imagen_muestra_foto().numpy()
+        #
+        # for epoch in range(epochs):
+        #     start_time_epoch = timestamp()
+        #     n_batches = lector_imagenes.get_n_batches(batch_size)
+        #     d_losses = np.empty([n_batches, 2])
+        #     g_losses = np.empty([n_batches, 7])
+        #     for batch_i, (imgs_A, imgs_B) in enumerate(lector_imagenes.loadiscriminador_Batch()):
+        #         d_losses[batch_i], g_losses[batch_i] = self._train_step(imgs_A.numpy(), imgs_B.numpy(), valid, fake)
+        #
+        #     self.escribir_metricas_perdidas(d_losses, g_losses, writer_train, epoch)
+        #
+        #     start_time_test = timestamp()
+        #     elapsed_time_train = start_time_test - start_time_epoch
+        #
+        #     self.test(epoch, lector_imagenes)
+        #
+        #     elapsed_time_test = timestamp() - start_time_test
+        #
+        #     self.logger.info("[Epoch %d/%d] time training: %s time testing: %s Total time %s" % (
+        #         epoch, epochs, elapsed_time_train, elapsed_time_test, (timestamp() - start_time_train)))
+        #
+        #     self._sample_images(epoch, imagen_muestra_pintor, imagen_muestra_foto)
+        #
+        # self._final_images(timestamp_fancy(), imagen_muestra_pintor, imagen_muestra_foto)
+        # self._guardar_modelo(timestamp_fancy())
 
-        self._final_images(timestamp_fancy(), imagen_muestra_pintor, imagen_muestra_real)
-        self._guardar_modelo(timestamp_fancy())
+    @tf.function
+    def _train_step(self, pintor_real, foto_real):
+        # persistent is set to True because the tape is used more than
+        # once to calculate the gradients.
+        with tf.GradientTape(persistent=True) as tape:
+            # El generator foto traduce pintor -> foto
+            # El generador pintor traduce foto -> pintor
 
-        self.modelo_entrenado = True
+            estimacion_foto = self.generador_foto(pintor_real, training=True)
+            pintor_ciclado = self.generador_pintor(estimacion_foto, training=True)
 
-    def _train_step(self, imgs_A, imgs_B, valid, fake):
-        # ----------------------
-        #  Train Discriminators
-        # ----------------------
-        # Translate images to opposite domain
-        fake_B = self.g_AB.predict(imgs_A)
-        fake_A = self.g_BA.predict(imgs_B)
+            estimacion_pintor = self.generador_pintor(foto_real, training=True)
+            foto_ciclada = self.generador_foto(estimacion_pintor, training=True)
 
-        # Train the discriminators (original images = real / translated = Fake)
-        dA_loss_real = self.d_A.train_on_batch(imgs_A, valid)
-        dA_loss_fake = self.d_A.train_on_batch(fake_A, fake)
-        dA_loss = 0.5 * np.add(dA_loss_real, dA_loss_fake)
+            # same_pintor and same_foto are used for identity loss.
+            mismo_pintor = self.generador_pintor(pintor_real, training=True)
+            mismo_foto = self.generador_foto(foto_real, training=True)
 
-        dB_loss_real = self.d_B.train_on_batch(imgs_B, valid)
-        dB_loss_fake = self.d_B.train_on_batch(fake_B, fake)
-        dB_loss = 0.5 * np.add(dB_loss_real, dB_loss_fake)
+            disc_pintor_real = self.discriminador_pintor(pintor_real, training=True)
+            disc_foto_real = self.discriminador_foto(foto_real, training=True)
 
-        # Total disciminator loss
-        d_loss = 0.5 * np.add(dA_loss, dB_loss)
+            disc_estimacion_pintor = self.discriminador_pintor(estimacion_pintor, training=True)
+            disc_estimacion_foto = self.discriminador_foto(estimacion_foto, training=True)
 
-        # ------------------
-        #  Train Generators
-        # ------------------
+            # calculate the loss
+            error_generador_foto = self.error_generador(disc_estimacion_foto)
+            error_generador_pintor = self.error_generador(disc_estimacion_pintor)
 
-        # Train the generators
-        g_loss = self.modelo.train_on_batch([imgs_A, imgs_B],
-                                            [valid, valid,
-                                             imgs_A, imgs_B,
-                                             imgs_A, imgs_B])
+            error_ciclo_total = calcular_error_ciclo(pintor_real, pintor_ciclado) + calcular_error_ciclo(foto_real,
+                                                                                                         foto_ciclada)
 
-        return d_loss, g_loss
+            # Total generator loss = adversarial loss + cycle loss
 
-    def test(self, step, lector_imagenes):
-        writer_test = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_test())
-        batch_size = batch_size_test
-        # Adversarial loss ground truths
-        valid = np.ones((batch_size,) + self.disc_patch)
-        fake = np.zeros((batch_size,) + self.disc_patch)
+            error_identidad_generador_foto = calcular_error_identidad(foto_real, mismo_foto)
+            error_identidad_generador_pintor = calcular_error_identidad(pintor_real, mismo_pintor)
+            error_total_generador_foto = error_generador_foto + error_ciclo_total + error_identidad_generador_foto
+            error_total_generador_pintor = error_generador_pintor + error_ciclo_total + error_identidad_generador_pintor
 
-        n_batches = lector_imagenes.get_n_batches(batch_size)
-        d_losses = np.empty([n_batches, 2])
-        g_losses = np.empty([n_batches, 7])
+            error_discriminador_pintor = self.error_discriminador(disc_pintor_real, disc_estimacion_pintor)
+            error_discriminador_foto = self.error_discriminador(disc_foto_real, disc_estimacion_foto)
 
-        for batch_i, (imgs_A, imgs_B) in enumerate(lector_imagenes.load_batch(is_training=False)):
-            imgs_A = imgs_A.numpy()
-            imgs_B = imgs_B.numpy()
-            fake_B = self.g_AB.predict(imgs_A)
-            fake_A = self.g_BA.predict(imgs_B)
+        # Calculate the gradients for generator and discriminator
+        self.generador_foto_gradientes = tape.gradient(error_total_generador_foto,
+                                                       self.generador_foto.trainable_variables)
+        self.generador_pintor_gradientes = tape.gradient(error_total_generador_pintor,
+                                                         self.generador_pintor.trainable_variables)
+        # self.logger("generador_pintor_gradientes" + str(self.generador_foto_gradientes))
 
-            # Train the discriminators (original images = real / translated = Fake)
-            dA_loss_real = self.d_A.test_on_batch(imgs_A, valid)
-            dA_loss_fake = self.d_A.test_on_batch(fake_A, fake)
-            dA_loss = 0.5 * np.add(dA_loss_real, dA_loss_fake)
+        discriminator_pintor_gradientes = tape.gradient(error_discriminador_pintor,
+                                                        self.discriminador_pintor.trainable_variables)
+        discriminator_foto_gradientes = tape.gradient(error_discriminador_foto,
+                                                      self.discriminador_foto.trainable_variables)
+        # self.logger("discriminator_foto_gradientes" + str(self.generador_foto_gradientes))
 
-            dB_loss_real = self.d_B.test_on_batch(imgs_B, valid)
-            dB_loss_fake = self.d_B.test_on_batch(fake_B, fake)
-            dB_loss = 0.5 * np.add(dB_loss_real, dB_loss_fake)
+        # Apply the gradients to the optimizer
+        self.optimizador_generador_foto.apply_gradients(zip(self.generador_foto_gradientes,
+                                                            self.generador_foto.trainable_variables))
 
-            # Total disciminator loss
-            d_loss = 0.5 * np.add(dA_loss, dB_loss)
+        self.optimizador_generador_pintor.apply_gradients(zip(self.generador_pintor_gradientes,
+                                                              self.generador_pintor.trainable_variables))
 
-            g_loss = self.modelo.test_on_batch([imgs_A, imgs_B],
-                                               [valid, valid,
-                                                imgs_A, imgs_B,
-                                                imgs_A, imgs_B])
+        self.optimizador_discriminador_pintor.apply_gradients(zip(discriminator_pintor_gradientes,
+                                                                  self.discriminador_pintor.trainable_variables))
 
-            d_losses[batch_i] = d_loss
-            g_losses[batch_i] = g_loss
+        self.optimizador_discriminador_foto.apply_gradients(zip(discriminator_foto_gradientes,
+                                                                self.discriminador_foto.trainable_variables))
 
-        self.escribir_metricas_perdidas(d_losses, g_losses, writer_test, step)
+        return error_discriminador_pintor, error_discriminador_foto, error_total_generador_pintor, \
+               error_total_generador_foto, error_generador_pintor, error_generador_foto, \
+               error_identidad_generador_pintor, error_identidad_generador_foto, error_ciclo_total
 
-    def _sample_images(self, epoch, imagen_pintor, imagen_real):
+    def generator_loss(self, generated):
+        return self.loss_obj(tf.ones_like(generated), generated)
 
+    def discriminator_loss(self, real, generated):
+        real_loss = self.loss_obj(tf.ones_like(real), real)
+
+        generated_loss = self.loss_obj(tf.zeros_like(generated), generated)
+
+        total_disc_loss = real_loss + generated_loss
+
+        return total_disc_loss * 0.5
+
+    def error_discriminador(self, real, generado):
+        error_real = self.funcion_error(tf.ones_like(real), real)
+
+        error_generado = self.funcion_error(tf.zeros_like(generado), generado)
+
+        error_total_discriminador = error_real + error_generado
+
+        return error_total_discriminador * 0.5
+
+    def error_generador(self, generador):
+        return self.funcion_error(tf.ones_like(generador), generador)
+
+    def imagenes_epoch(self, epoch, imagen_pintor, imagen_foto):
+        estimacion_foto, estimacion_pintor, pintor_reconstruido, foto_reconstruida = self._predecir_pares_imagenes(
+            imagen_pintor, imagen_foto)
+        self._imagenes_a_log(epoch, imagen_pintor, imagen_foto, estimacion_foto, estimacion_pintor, pintor_reconstruido,
+                             foto_reconstruida)
+
+    def _predecir_pares_imagenes(self, imagen_pintor, imagen_foto):
         # Translate images to the other domain
-        fake_B = self.g_AB.predict(imagen_pintor)
-        fake_A = self.g_BA.predict(imagen_real)
+        estimacion_foto = self.generador_foto.predict(imagen_pintor)
+        estimacion_pintor = self.generador_pintor.predict(imagen_foto)
         # Translate back to original domain
-        reconstr_A = self.g_BA.predict(fake_B)
-        reconstr_B = self.g_AB.predict(fake_A)
+        pintor_reconstruido = self.generador_pintor.predict(estimacion_foto)
+        foto_reconstruida = self.generador_foto.predict(estimacion_pintor)
+
+        return estimacion_foto, estimacion_pintor, pintor_reconstruido, foto_reconstruida
+
+    def _imagenes_a_log(self, epoch, imagen_pintor, imagen_foto, estimacion_foto, estimacion_pintor,
+                        pintor_reconstruido, foto_reconstruida):
 
         file_writer = tf.summary.create_file_writer(self.utils.obtener_ruta_logs())
 
         # Using the file writer, log the reshaped image.
         with file_writer.as_default():
             tf.summary.image("Pintor original", imagen_pintor, step=epoch)
-            tf.summary.image("Estimacion foto", fake_B, step=epoch)
-            tf.summary.image("Pintor reconstruida", reconstr_A, step=epoch)
-            tf.summary.image("Foto original", imagen_real, step=epoch)
-            tf.summary.image("Estimacion pintor", fake_A, step=epoch)
-            tf.summary.image("Foto reconstruida", reconstr_B, step=epoch)
+            tf.summary.image("Estimacion foto", estimacion_foto, step=epoch)
+            tf.summary.image("Pintor reconstruida", pintor_reconstruido, step=epoch)
+            tf.summary.image("Foto original", imagen_foto, step=epoch)
+            tf.summary.image("Estimacion pintor", estimacion_pintor, step=epoch)
+            tf.summary.image("Foto reconstruida", foto_reconstruida, step=epoch)
 
-    def _final_images(self, nombre, imagen_pintor, imagen_real):
-        r, c = 2, 3
+    def _imagenes_final(self, nombre, imagen_pintor, imagen_foto):
+        filas, columnas = 2, 3
 
-        # Translate images to the other domain
-        fake_B = self.g_AB.predict(imagen_pintor)
-        fake_A = self.g_BA.predict(imagen_real)
-        # Translate back to original domain
-        reconstr_A = self.g_BA.predict(fake_B)
-        reconstr_B = self.g_AB.predict(fake_A)
+        estimacion_foto, estimacion_pintor, pintor_reconstruido, foto_reconstruida = self._predecir_pares_imagenes(
+            imagen_pintor, imagen_foto)
 
-        gen_imgs = np.concatenate([imagen_pintor, fake_B, reconstr_A, imagen_real, fake_A, reconstr_B])
+        gen_imgs = np.concatenate(
+            [imagen_pintor, estimacion_foto, pintor_reconstruido, imagen_foto, estimacion_pintor, foto_reconstruida])
 
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5
 
         titles = ['Original', 'Translated', 'Reconstructed']
-        fig, axs = plt.subplots(r, c)
+        fig, axs = plt.subplots(filas, columnas)
         cnt = 0
-        for i in range(r):
-            for j in range(c):
+        for i in range(filas):
+            for j in range(columnas):
                 axs[i, j].imshow(gen_imgs[cnt])
                 axs[i, j].set_title(titles[j])
                 axs[i, j].axis('off')
@@ -307,44 +304,59 @@ class CycleGAN:
         fig.savefig(self.utils.obtener_archivo_imagen_a_guardar(nombre))
         plt.close()
 
-    def _guardar_modelo(self, nombre):
-        self.modelo.save(self.utils.obtener_archivo_modelo_a_guardar(nombre))
+    # def _guardar_modelo(self, nombre):
+    #     self.modelo.save(self.utils.obtener_archivo_modelo_a_guardar(nombre))
 
     @staticmethod
-    def escribir_metricas_perdidas(d_losses, g_losses, writer, step):
-        d_loss = d_losses[:, 0]
-        d_loss_acc = 100 * d_losses[:, 1]
-        g_loss = g_losses[:, 0]
-        g_loss_adv = g_losses[:, 1:3]
-        g_loss_recon = g_losses[:, 3:5]
-        g_loss_id = g_losses[:, 5:6]
+    def escribir_metricas_perdidas(error_discriminador_pintor, error_discriminador_foto, error_total_generador_pintor,
+                                   error_total_generador_foto, error_generador_pintor,
+                                   error_generador_foto, error_identidad_generador_pintor,
+                                   error_identidad_generador_foto, error_ciclo_total, writer, step):
 
         with writer.as_default():
-            tf.summary.scalar("d_loss mean", np.mean(d_loss), step=step)
-            tf.summary.scalar("d_loss_acc mean", np.mean(d_loss_acc), step=step)
-            tf.summary.scalar("g_loss mean", np.mean(g_loss), step=step)
-            tf.summary.scalar("g_loss_adv mean", np.mean(g_loss_adv), step=step)
-            tf.summary.scalar("g_loss_recon mean", np.mean(g_loss_recon), step=step)
-            tf.summary.scalar("g_loss_id mean", np.mean(g_loss_id), step=step)
-            tf.summary.scalar("d_loss std", np.std(d_loss), step=step)
-            tf.summary.scalar("d_loss_acc std", np.std(d_loss_acc), step=step)
-            tf.summary.scalar("g_loss std", np.std(g_loss), step=step)
-            tf.summary.scalar("g_loss_adv std", np.std(g_loss_adv), step=step)
-            tf.summary.scalar("g_loss_recon std", np.std(g_loss_recon), step=step)
-            tf.summary.scalar("g_loss_id std", np.std(g_loss_id), step=step)
-            writer.flush()
+            tf.summary.scalar("Media del error_discriminador_pintor", np.mean(error_discriminador_pintor), step=step)
+            tf.summary.scalar("Media del error_discriminador_foto", np.mean(error_discriminador_foto), step=step)
+            tf.summary.scalar("Media del error_total_generador_pintor", np.mean(error_total_generador_pintor),
+                              step=step)
+            tf.summary.scalar("Media del error_total_generador_foto", np.mean(error_total_generador_foto), step=step)
+            tf.summary.scalar("Media del error_generador_pintor", np.mean(error_generador_pintor), step=step)
+            tf.summary.scalar("Media del error_generador_foto", np.mean(error_generador_foto), step=step)
+            tf.summary.scalar("Media del error_identidad_generador_pintor", np.mean(error_identidad_generador_pintor),
+                              step=step)
+            tf.summary.scalar("Media del error_identidad_generador_foto", np.mean(error_identidad_generador_foto),
+                              step=step)
+            tf.summary.scalar("Media del error_ciclo_total", np.mean(error_ciclo_total), step=step)
 
-    def load_model(self, ruta):
-        self.modelo = load_model(ruta)
+            tf.summary.scalar("Desviación estándar del error_discriminador_pintor", np.std(error_discriminador_pintor),
+                              step=step)
+            tf.summary.scalar("Desviación estándar del error_discriminador_foto", np.std(error_discriminador_foto),
+                              step=step)
+            tf.summary.scalar("Desviación estándar del error_total_generador_pintor",
+                              np.std(error_total_generador_pintor), step=step)
+            tf.summary.scalar("Desviación estándar del error_total_generador_foto", np.std(error_total_generador_foto),
+                              step=step)
+            tf.summary.scalar("Desviación estándar del error_generador_pintor", np.std(error_generador_pintor),
+                              step=step)
+            tf.summary.scalar("Desviación estándar del error_generador_foto", np.std(error_generador_foto), step=step)
+            tf.summary.scalar("Desviación estándar del error_identidad_generador_pintor",
+                              np.std(error_identidad_generador_pintor), step=step)
+            tf.summary.scalar("Desviación estándar del error_identidad_generador_foto",
+                              np.std(error_identidad_generador_foto), step=step)
+            tf.summary.scalar("Desviación estándar del error_ciclo_total", np.std(error_ciclo_total), step=step)
 
-    def crear_imagen(self, imagen, ruta_modelo=None, pintar_cuadro=True):
-        if not self.modelo_entrenado:
-            if ruta_modelo is not None:
-                self.load_model(ruta_modelo)
-            else:
-                print("No hay modelo entrenado para generar la imagen")
-        if pintar_cuadro:
-            resultado = self.g_AB.predict(imagen)
-        else:
-            resultado = self.g_BA.predict(imagen)
-        return resultado
+    #         writer.flush()
+    #
+    # def load_model(self, ruta):
+    #     self.modelo = load_model(ruta)
+    #
+    # def crear_imagen(self, imagen, pintar_cuadro=True):
+    #     # if not self.modelo_entrenado:
+    #     #     if ruta_modelo is not None:
+    #     #         self.load_model(ruta_modelo)
+    #     #     else:
+    #     #         print("No hay modelo entrenado para generar la imagen")
+    #     if pintar_cuadro:
+    #         resultado = self.generador_foto.predict(imagen)
+    #     else:
+    #         resultado = self.generador_pintor.predict(imagen)
+    #     return resultado
