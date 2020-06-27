@@ -44,42 +44,43 @@ def gsutil_disponible():
 
 class Utilidades(metaclass=Singleton):
     __instance = None
-    momento_inicio = timestamp_fancy()
 
-    dataset = "monet2photo"
-    _archivo_dataset = dataset + ".zip"
-    _ruta_raiz_dataset = pathlib.Path("../datasets")
-    _ruta_dataset = _ruta_raiz_dataset / dataset
-    _repo = "https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/datasets/" + _archivo_dataset
+    def __init__(self, version=0, dataset="monet2photo"):
+        self.version = str(version)
+        self._ruta_logs = pathlib.Path("../logs", dataset, self.version)
+        self._ruta_logs_train = self._ruta_logs / "train"
+        self._ruta_logs_test = self._ruta_logs / "test"
 
-    _ruta_dataset_train_pintor = _ruta_dataset / "trainA"
-    _ruta_dataset_train_foto = _ruta_dataset / "trainB"
-    _ruta_dataset_test_pintor = _ruta_dataset / "testA"
-    _ruta_dataset_test_foto = _ruta_dataset / "testB"
+        self._ruta_imagenes = pathlib.Path("../imagenes", dataset, self.version)
+        self._ruta_modelo = pathlib.Path("../modelos", dataset, self.version)
 
-    _ruta_logs = pathlib.Path("../logs", dataset, momento_inicio)
-    _ruta_logs_train = _ruta_logs / "train"
-    _ruta_logs_test = _ruta_logs / "test"
+        self._ruta_pesos_modelo = self._ruta_modelo / "pesos"
+        self._ruta_modelo_configuracion = self._ruta_modelo / "config"
 
-    _ruta_imagenes = pathlib.Path("../imagenes", dataset, momento_inicio)
-    _ruta_modelo = pathlib.Path("../modelos", dataset, momento_inicio)
+        self.dataset = dataset
+        self._archivo_dataset = dataset + ".zip"
+        self._ruta_raiz_dataset = pathlib.Path("../datasets")
+        self._ruta_dataset = self._ruta_raiz_dataset / self.dataset
+        self._repo = "https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/datasets/" + self._archivo_dataset
 
-    _ruta_pesos_modelo = _ruta_modelo / "pesos"
-    _ruta_modelo_configuracion = _ruta_modelo / "config"
+        self._ruta_dataset_train_pintor = self._ruta_dataset / "trainA"
+        self._ruta_dataset_train_foto = self._ruta_dataset / "trainB"
+        self._ruta_dataset_test_pintor = self._ruta_dataset / "testA"
+        self._ruta_dataset_test_foto = self._ruta_dataset / "testB"
 
-    _ruta_padre_cache = pathlib.Path("../tfcache")
-    _ruta_cache = pathlib.Path("../tfcache", dataset, momento_inicio)  # las caches son excluyentes entre iteraciones
+        self._ruta_padre_cache = pathlib.Path("../tfcache")
+        self._ruta_cache = self._ruta_padre_cache / self.dataset / self.version
+        # las caches son excluyentes entre iteraciones
 
-    bucket_gcp = "gs://tfg-impresionismo/"
+        self.bucket_gcp = "gs://tfg-impresionismo/"
 
-    _ruta_archivo_muestra_pintor = _ruta_dataset_test_pintor / "00960.jpg"
-    # Windows no admite :
-    _ruta_archivo_muestra_foto = _ruta_dataset_test_foto / (
-        '2014-08-15 08_48_43.jpg' if platform.system() == "Windows" else '2014-08-15 08:48:43.jpg')
+        self._ruta_archivo_muestra_pintor = self._ruta_dataset_test_pintor / "00960.jpg"
+        # Windows no admite :
+        self._ruta_archivo_muestra_foto = self._ruta_dataset_test_foto / (
+            '2014-08-15 08_48_43.jpg' if platform.system() == "Windows" else '2014-08-15 08:48:43.jpg')
 
-    _mascara_formateo_log = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        self._mascara_formateo_log = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
-    def __init__(self):
         self._inicializar_directorios()
         self._logger = self.obtener_logger("utilidades")
 

@@ -4,7 +4,7 @@ from utilidades import Utilidades
 
 if __name__ == "__main__":
     utils = Utilidades()
-    logger = utils.obtener_logger("lanzadera")
+    logger = utils.obtener_logger("lanzadera entrenamiento")
 
     utils.asegurar_dataset()
     logger.info("Dataset en linea")

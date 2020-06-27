@@ -3,6 +3,7 @@ import tensorflow as tf
 from parametros_modelo import alto, ancho, canales, tamanio_batch, tamanio_buffer
 from utilidades import *
 
+
 def _leer_y_normalizar_imagen(ruta, train=False):
     """Primitiva que lee y prepocesa una imagen según si es para entrenar o no"""
     img = tf.io.read_file(ruta)  # Abrimos el archivo
@@ -76,9 +77,12 @@ class LectorImagenes(metaclass=Singleton):
         self.logger.info("listado_dataset_test_foto " + str(timestamp() - start))
 
         start = timestamp()
-        listado_train_pintor_cargado = listado_dataset_train_pintor.map(_preprocesar_imagen_train, num_parallel_calls=AUTOTUNE)
-        listado_train_foto_cargado = listado_dataset_train_foto.map(_preprocesar_imagen_train, num_parallel_calls=AUTOTUNE)
-        listado_test_pintor_cargado = listado_dataset_test_pintor.map(_preprocesar_imagen_test, num_parallel_calls=AUTOTUNE)
+        listado_train_pintor_cargado = listado_dataset_train_pintor.map(_preprocesar_imagen_train,
+                                                                        num_parallel_calls=AUTOTUNE)
+        listado_train_foto_cargado = listado_dataset_train_foto.map(_preprocesar_imagen_train,
+                                                                    num_parallel_calls=AUTOTUNE)
+        listado_test_pintor_cargado = listado_dataset_test_pintor.map(_preprocesar_imagen_test,
+                                                                      num_parallel_calls=AUTOTUNE)
         listado_test_foto_cargado = listado_dataset_test_foto.map(_preprocesar_imagen_test, num_parallel_calls=AUTOTUNE)
         self.logger.info("Mapeado datasets " + str(timestamp() - start))
 

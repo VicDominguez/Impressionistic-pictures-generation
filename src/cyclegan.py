@@ -4,6 +4,7 @@ import io
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pickle as pkl
 import tensorflow as tf
 
 from keras.initializers import RandomNormal
@@ -16,8 +17,8 @@ from keras.optimizers import Adam
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 from keras import backend as K
 from keras.utils import plot_model
-import pickle as pkl
 
+from src.lector_imagenes import preprocesar_imagen
 from src.parametros_modelo import *
 from src.utilidades import *
 
@@ -76,16 +77,6 @@ class CycleGAN:
 
         self.compilar_modelo()
 
-        # self.ckpt = tf.train.Checkpoint(generador_foto=self.generador_foto,
-        #                                 generador_pintor=self.generador_pintor,
-        #                                 discriminador_pintor=self.discriminador_pintor,
-        #                                 discriminador_foto=self.discriminador_foto)
-
-        # self.ckpt_manager = tf.train.CheckpointManager(self.ckpt, self.utils.obtener_ruta_checkpoints(), max_to_keep=5)
-        #
-        # if self.ckpt_manager.latest_checkpoint:
-        #     self.ckpt.restore(self.ckpt_manager.latest_checkpoint)
-        #     self.logger("Punto de control restaurado")
 
     def compilar_modelo(self):
 
@@ -373,16 +364,29 @@ class CycleGAN:
                                                      imagenes_pintor, imagenes_foto,
                                                      imagenes_pintor, imagenes_foto])
 
+    def predecir_imagen(self, imagen, modo_destino):
+        if modo_destino.lower() == "pintor":
+            prediccion = self.generador_pintor.predict(imagen)
+        else:
+            prediccion = self.generador_foto.predict(imagen)
+        return prediccion
+
+    def convertir_imagen(self, ruta_imagen, modo_destino):
+        imagen = preprocesar_imagen(ruta_imagen)
+        imagen_predecida = self.predecir_imagen(imagen, modo_destino)
+        #TODO upsample con la API aqui. Poner bicubica si falla.
+        return imagen_predecida
+
     def _imagen_muestra(self, imagen_pintor, imagen_foto, epoch):
         file_writer = tf.summary.create_file_writer(self.utils.obtener_ruta_logs())
 
         filas, columnas = 2, 3
 
-        estimacion_foto = self.generador_foto.predict(imagen_pintor)
-        estimacion_pintor = self.generador_pintor.predict(imagen_foto)
+        estimacion_foto = self.predecir_imagen(imagen_pintor, "foto")
+        estimacion_pintor = self.predecir_imagen(imagen_foto, "pintor")
         # Translate back to original domain
-        pintor_reconstruido = self.generador_pintor.predict(estimacion_foto)
-        foto_reconstruida = self.generador_foto.predict(estimacion_pintor)
+        pintor_reconstruido = self.predecir_imagen(estimacion_foto, "pintor")
+        foto_reconstruida = self.predecir_imagen(estimacion_pintor, "foto")
 
         gen_imgs = np.concatenate(
             [imagen_pintor, estimacion_foto, pintor_reconstruido, imagen_foto, estimacion_pintor, foto_reconstruida])
@@ -446,33 +450,23 @@ class CycleGAN:
 
     def pintar_modelo(self):
         plot_model(self.modelo_combinado, to_file=self.utils.obtener_ruta_archivo_modelo_esquema(),
-                   show_shapes=True, show_layer_names=True)
+                   show_shapes=True, show_layer_names=True, dpi=300)
         plot_model(self.discriminador_pintor,
                    to_file=self.utils.obtener_ruta_archivo_discriminador_pintor_esquema(),
-                   show_shapes=True, show_layer_names=True)
+                   show_shapes=True, show_layer_names=True, dpi=300)
         plot_model(self.discriminador_foto, to_file=self.utils.obtener_ruta_archivo_discriminador_foto_esquema(),
-                   show_shapes=True, show_layer_names=True)
+                   show_shapes=True, show_layer_names=True, dpi=300)
         plot_model(self.generador_pintor, to_file=self.utils.obtener_ruta_archivo_generador_pintor_esquema(),
-                   show_shapes=True, show_layer_names=True)
+                   show_shapes=True, show_layer_names=True, dpi=300)
         plot_model(self.generador_foto, to_file=self.utils.obtener_ruta_archivo_generador_foto_esquema(),
-                   show_shapes=True, show_layer_names=True)
+                   show_shapes=True, show_layer_names=True, dpi=300)
 
     def serializar_red(self):  # TODO poner en lanzadera entreno
 
         with open(self.utils.obtener_ruta_archivo_modelo_parametros(), 'wb') as archivo:
-            pkl.dump([
-                tasa_aprendizaje,
-                lambda_reconstruccion,
-                lambda_validacion,
-                lambda_identidad,
-                ancho,
-                alto,
-                canales,
-                epochs,
-                tamanio_buffer,
-                tamanio_batch,
-                filtros_generador,
-                filtros_discriminador], archivo)
+            pkl.dump([tasa_aprendizaje, lambda_reconstruccion, lambda_validacion, lambda_identidad, ancho, alto,
+                      canales, epochs, tamanio_buffer, tamanio_batch, filtros_generador, filtros_discriminador],
+                     archivo)
 
         self.pintar_modelo()
 
