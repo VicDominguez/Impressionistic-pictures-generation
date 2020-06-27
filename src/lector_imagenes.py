@@ -132,10 +132,10 @@ class LectorImagenes(metaclass=Singleton):
         iter_dataset_foto = iter(dataset_foto)
 
         for i in range(n_batches):
-            yield next(iter_dataset_pintor), next(iter_dataset_foto)
+            yield next(iter_dataset_pintor).numpy(), next(iter_dataset_foto).numpy()
 
     def obtener_imagen_muestra_pintor(self):
-        return preprocesar_imagen(self.utils.obtener_archivo_muestra_pintor())
+        return preprocesar_imagen(self.utils.obtener_archivo_muestra_pintor()).numpy()
 
     def obtener_imagen_muestra_foto(self):
-        return preprocesar_imagen(self.utils.obtener_archivo_muestra_foto())
+        return preprocesar_imagen(self.utils.obtener_archivo_muestra_foto()).numpy()
