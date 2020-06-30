@@ -1,9 +1,9 @@
 import argparse
 import pathlib
 
-from src.cyclegan import CycleGAN  # TODO Quitar esto
-from src.cargador_imagenes import CargadorImagenes
-from src.utilidades import Utilidades
+from cyclegan import CycleGAN  # TODO Quitar esto
+from cargador_imagenes import CargadorImagenes
+from utilidades import Utilidades
 
 if __name__ == "__main__":
     # Leemos los argumentos

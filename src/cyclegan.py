@@ -16,9 +16,9 @@ from keras_contrib.layers.normalization.instancenormalization import InstanceNor
 import numpy as np
 import io
 
-import src.ampliar_imagen
-from src.cargador_imagenes import preprocesar_imagen
-from src.utilidades import *
+import ampliar_imagen
+from cargador_imagenes import preprocesar_imagen
+from utilidades import *
 
 
 class ReflectionPadding2D(Layer):
@@ -280,14 +280,12 @@ class CycleGAN:
 
         numero_batches = lector_imagenes.calcular_n_batches()
 
-        # TODO probar
-        error_discriminadores = tf.keras.metrics.Mean(name="Error discriminadores", dtype=tf.float32)
-        precision_discriminadores = tf.keras.metrics.Mean(name="Precisión discriminadores", dtype=tf.float32)
-        error_generadores = tf.keras.metrics.Mean(name="Error generadores", dtype=tf.float32)
-        validez_generadores = tf.keras.metrics.Mean(name="Validez generadores", dtype=tf.float32)
-        error_reconstruccion_generadores = tf.keras.metrics.Mean(name="Error reconstruccion generadores",
-                                                                 dtype=tf.float32)
-        error_identidad_generadores = tf.keras.metrics.Mean(name="Error identidad discriminadores", dtype=tf.float32)
+        error_discriminadores = np.ones(numero_batches)
+        precision_discriminadores = np.ones(numero_batches)
+        error_generadores = np.ones(numero_batches)
+        validez_generadores = np.ones(numero_batches)
+        error_reconstruccion_generadores = np.ones(numero_batches)
+        error_identidad_generadores = np.ones(numero_batches)
 
         comienzo_entrenamiento = timestamp()
 
@@ -299,16 +297,20 @@ class CycleGAN:
             self.logger.info("epoch " + str(epoch))
 
             for indice, (imagenes_pintor, imagenes_foto) in enumerate(lector_imagenes.cargar_batch()):
+                self.logger.info("vamos a por los discriminadores")
                 error_discriminadores_actual = self.entrenar_discriminadores(imagenes_pintor, imagenes_foto,
                                                                              umbral_verdad, umbral_falso)
+                self.logger.info("vamos a por los generadores")
                 error_generadores_actual = self.entrenar_generadores(imagenes_pintor, imagenes_foto, umbral_verdad)
 
-                error_discriminadores.update_state(error_discriminadores_actual[0])
-                precision_discriminadores.update_state(100 * error_discriminadores_actual[1])
-                error_generadores.update_state(error_generadores_actual[0])
-                validez_generadores.update_state(tf.math.reduce_mean(error_generadores_actual[1:3]))
-                error_reconstruccion_generadores.update_state(tf.math.reduce_mean(error_generadores_actual[3:5]))
-                error_identidad_generadores.update_state(tf.math.reduce_mean(error_generadores_actual[5:6]))
+                error_discriminadores[indice] = error_discriminadores_actual[0]
+                precision_discriminadores[indice] = 100 * error_discriminadores_actual[1]
+                error_generadores[indice] = error_generadores_actual[0]
+                validez_generadores[indice] = np.mean(error_generadores_actual[1:3])
+                error_reconstruccion_generadores[indice] = np.mean(error_generadores_actual[3:5])
+                error_identidad_generadores[indice] = np.mean(error_generadores_actual[5:6])
+
+                self.logger.info("nbatch " + str(indice) + " del epoch " + str(epoch))
 
             # TODO test
             self.escribir_metricas_perdidas(error_discriminadores, precision_discriminadores, error_generadores,
@@ -329,7 +331,7 @@ class CycleGAN:
 
         fin_entrenamiento = timestamp()
         self.logger.info("Entrenamiento completado en " + str(fin_entrenamiento - comienzo_entrenamiento))
-        self._guardar_modelo("prueba")
+        self._guardar_modelo("modelo_entrenado")
         self.serializar_red()
 
     # @tf.function
@@ -374,21 +376,8 @@ class CycleGAN:
     def convertir_imagen(self, ruta_imagen, modo_destino):
         imagen = preprocesar_imagen(ruta_imagen).numpy()
         imagen_predecida = self.predecir_imagen(imagen, modo_destino)
-        imagen_ampliada = src.ampliar_imagen.ampliar(imagen_predecida)
+        imagen_ampliada = ampliar_imagen.ampliar(imagen_predecida)
         return imagen_ampliada
-
-    @staticmethod
-    def _grafico_a_imagen_tensorboard(figura):
-        """"Convierte un gráfico de matplotlib a un tensor de una imagen png para Tensorboard"""
-        # Guardamos el grafico
-        buffer = io.BytesIO()
-        plt.savefig(buffer, format='png', dpi=400)
-        # Cerramos la figura
-        plt.close(figura)
-        buffer.seek(0)
-        # Pasamos el buffer png a un tensor primero 3D y luego 4D, lo que necesita tensorboard
-        imagen_tf = tf.image.decode_png(buffer.getvalue(), channels=4)
-        return tf.expand_dims(imagen_tf, 0)
 
     def _imagen_muestra(self, imagen_pintor, imagen_foto, epoch):
         file_writer = tf.summary.create_file_writer(self.utils.obtener_ruta_logs())
@@ -417,7 +406,16 @@ class CycleGAN:
                 ejes[fila, columna].axis('off')
                 cnt += 1
 
-        imagen_tf = self._grafico_a_imagen_tensorboard(figura)
+        """"Convierte un gráfico de matplotlib a un tensor de una imagen png para Tensorboard"""
+        # Guardamos el grafico
+        buffer = io.BytesIO()
+        plt.savefig(buffer, format='png', dpi=400)
+        # Cerramos la figura
+        plt.close(figura)
+        buffer.seek(0)
+        # Pasamos el buffer png a un tensor primero 3D y luego 4D, lo que necesita tensorboard
+        imagen_tf = tf.image.decode_png(buffer.getvalue(), channels=4)
+        imagen_tf = tf.expand_dims(imagen_tf, 0)
 
         with file_writer.as_default():
             tf.summary.image("Imagen resumen", imagen_tf, step=epoch)
@@ -431,19 +429,27 @@ class CycleGAN:
                                    error_identidad_generadores, writer, step):
 
         with writer.as_default():
-            tf.summary.scalar("Error discriminadores", error_discriminadores.result(), step=step)
-            tf.summary.scalar("Precision discriminadores", precision_discriminadores.result(), step=step)
-            tf.summary.scalar("Error generadores", error_generadores.result(), step=step)
-            tf.summary.scalar("Validez generadores", validez_generadores.result(), step=step)
-            tf.summary.scalar("Error reconstruccion generadores", error_reconstruccion_generadores.result(), step=step)
-            tf.summary.scalar("Error identidad generadores", error_identidad_generadores.result(), step=step)
-
-        error_discriminadores.reset_states()
-        precision_discriminadores.reset_states()
-        error_generadores.reset_states()
-        validez_generadores.reset_states()
-        error_reconstruccion_generadores.reset_states()
-        error_identidad_generadores.reset_states()
+            tf.summary.scalar("Media del error de los discriminadores", np.mean(error_discriminadores), step=step)
+            tf.summary.scalar("Media de la precision de los discriminadores", np.mean(precision_discriminadores),
+                              step=step)
+            tf.summary.scalar("Media del error de los generadores", np.mean(error_generadores), step=step)
+            tf.summary.scalar("Media del error de la validez de los generadores", np.mean(validez_generadores),
+                              step=step)
+            tf.summary.scalar("Media del error de reconstruccion de los generadores",
+                              np.mean(error_reconstruccion_generadores), step=step)
+            tf.summary.scalar("Media del error de identidad de los generadores", np.mean(error_identidad_generadores),
+                              step=step)
+            tf.summary.scalar("Desviación estándar del error de los discriminadores", np.std(error_discriminadores),
+                              step=step)
+            tf.summary.scalar("Desviación estándar de la precision de los discriminadores",
+                              np.std(precision_discriminadores), step=step)
+            tf.summary.scalar("Desviación estándar del error de los generadores", np.std(error_generadores), step=step)
+            tf.summary.scalar("Desviación estándar de la validez de los generadores",
+                              np.std(validez_generadores), step=step)
+            tf.summary.scalar("Desviación estándar del error de reconstruccion de los generadores",
+                              np.std(error_reconstruccion_generadores), step=step)
+            tf.summary.scalar("Desviación estándar del error de identidad de los generadores",
+                              np.std(error_identidad_generadores), step=step)
 
     def pintar_modelo(self):
         plot_model(self.modelo_combinado, to_file=self.utils.obtener_ruta_archivo_modelo_esquema(),
@@ -461,8 +467,8 @@ class CycleGAN:
     def serializar_red(self):  # TODO poner en lanzadera entreno
 
         with open(self.utils.obtener_ruta_archivo_modelo_parametros(), 'wb') as archivo:
-            pkl.dump([self.tasa_aprendizaje, self.lambda_reconstruccion, self.lambda_validacion, self.lambda_identidad, 
-                      self.ancho, self.alto, self.canales,self.filtros_generador, self.filtros_discriminador],
+            pkl.dump([self.tasa_aprendizaje, self.lambda_reconstruccion, self.lambda_validacion, self.lambda_identidad,
+                      self.ancho, self.alto, self.canales, self.filtros_generador, self.filtros_discriminador],
                      archivo)
 
         self.pintar_modelo()

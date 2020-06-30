@@ -9,7 +9,7 @@ from datetime import datetime
 
 from tensorflow.keras.utils import get_file
 
-from src.singleton import Singleton  # TODO quitar esto
+from singleton import Singleton  # TODO quitar esto
 
 
 def timestamp_fancy():
@@ -126,8 +126,8 @@ class Utilidades(metaclass=Singleton):
         self._ruta_modelo_configuracion.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_pesos.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_imagenes.mkdir(parents=True, exist_ok=True)
-        # if self._ruta_padre_cache.exists(): #TODO solucionar este error
-        #    shutil.rmtree(_ruta_a_string(self._ruta_padre_cache), ignore_errors=False, onerror=None)
+        if self._ruta_tfcache.exists():  # TODO solucionar este error
+            shutil.rmtree(_ruta_a_string(self._ruta_tfcache), ignore_errors=False, onerror=None)
         self._ruta_cache.mkdir(parents=True, exist_ok=True)
 
     def asegurar_dataset(self):

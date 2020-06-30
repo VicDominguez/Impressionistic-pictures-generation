@@ -1,9 +1,9 @@
 import pathlib
 from pathlib import Path
 
-from src.cyclegan import CycleGAN
-from src.cargador_imagenes import CargadorImagenes
-from src.utilidades import Utilidades
+from cyclegan import CycleGAN
+from cargador_imagenes import CargadorImagenes
+from utilidades import Utilidades
 from PIL import Image
 
 if __name__ == "__main__":

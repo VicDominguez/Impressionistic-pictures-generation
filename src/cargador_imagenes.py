@@ -16,7 +16,7 @@ class CargadorImagenes(metaclass=Singleton):
 
         self.utils = Utilidades()
         if train:
-            self.AUTOTUNE = tf.data.experimental.AUTOTUNE
+            AUTOTUNE = tf.data.experimental.AUTOTUNE
             self.imagenes_train_pintor = self.utils.obtener_rutas_imagenes_train_pintor()
             self.imagenes_train_foto = self.utils.obtener_rutas_imagenes_train_foto()
             self.imagenes_test_pintor = self.utils.obtener_rutas_imagenes_test_pintor()
@@ -42,13 +42,13 @@ class CargadorImagenes(metaclass=Singleton):
 
             start = timestamp()
             listado_train_pintor_cargado = listado_dataset_train_pintor.map(self._preprocesar_imagen_train,
-                                                                            num_parallel_calls=self.AUTOTUNE)
+                                                                            num_parallel_calls=AUTOTUNE)
             listado_train_foto_cargado = listado_dataset_train_foto.map(self._preprocesar_imagen_train,
-                                                                        num_parallel_calls=self.AUTOTUNE)
+                                                                        num_parallel_calls=AUTOTUNE)
             listado_test_pintor_cargado = listado_dataset_test_pintor.map(self._preprocesar_imagen_test,
-                                                                          num_parallel_calls=self.AUTOTUNE)
+                                                                          num_parallel_calls=AUTOTUNE)
             listado_test_foto_cargado = listado_dataset_test_foto.map(self._preprocesar_imagen_test,
-                                                                      num_parallel_calls=self.AUTOTUNE)
+                                                                      num_parallel_calls=AUTOTUNE)
             self.logger.info("Mapeado datasets " + str(timestamp() - start))
 
             start = timestamp()
@@ -103,6 +103,7 @@ class CargadorImagenes(metaclass=Singleton):
         iter_dataset_pintor = iter(dataset_pintor)
         iter_dataset_foto = iter(dataset_foto)
 
+        self.logger.info("Vamos a sacar batches nano")
         for i in range(n_batches):
             yield next(iter_dataset_pintor).numpy(), next(iter_dataset_foto).numpy()
 
@@ -115,6 +116,7 @@ class CargadorImagenes(metaclass=Singleton):
                                   self.utils.obtener_altura(), self.utils.obtener_canales()).numpy()
 
     def preparar_dataset(self, ds, cache=True):  # Capamos a x valores?
+        AUTOTUNE = tf.data.experimental.AUTOTUNE
         if cache:
             if isinstance(cache, str):
                 ds = ds.cache(cache)
@@ -123,7 +125,7 @@ class CargadorImagenes(metaclass=Singleton):
         ds = ds.shuffle(buffer_size=self.utils.obtener_tamanio_buffer())
         ds = ds.repeat()  # repeat forever
         ds = ds.batch(self.utils.obtener_tamanio_batch())
-        ds = ds.prefetch(buffer_size=self.AUTOTUNE)
+        ds = ds.prefetch(buffer_size=AUTOTUNE)
         return ds
 
     def _preprocesar_imagen_train(self, ruta):

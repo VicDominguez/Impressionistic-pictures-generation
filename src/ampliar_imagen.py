@@ -3,13 +3,13 @@ import base64
 import requests
 import tensorflow as tf
 
-import src.procesado_imagenes  # TODO quitar esto
+import procesado_imagenes  # TODO quitar esto
 
 
 def ampliar(imagen, url_api):
     # preprocesamos la imagen
-    imagen_formato_PIL = src.procesado_imagenes.numpy_array_a_imagen(imagen)
-    imagen_base64 = src.procesado_imagenes.imagen_a_base64_string(imagen_formato_PIL)
+    imagen_formato_PIL = procesado_imagenes.numpy_array_a_imagen(imagen)
+    imagen_base64 = procesado_imagenes.imagen_a_base64_string(imagen_formato_PIL)
     imagen_base64 = str(imagen_base64, 'utf-8')
     # creamos la peticion
     payload = {"imagen": imagen_base64}
