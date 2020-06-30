@@ -1,0 +1,53 @@
+{
+  "configuracion_modelo":
+  {
+    "tasa_aprendizaje": "0.0002",
+    "lambda_reconstruccion": "10.0",
+    "lambda_validacion": "1",
+    "lambda_identidad": "2",
+    "ancho": "256",
+    "alto": "256",
+    "canales": "3",
+    "epochs": "200",
+    "tamanio_buffer": "1000",
+    "tamanio_batch": "1",
+    "filtros_generador": "32",
+    "filtros_discriminador": "32"
+  },
+  "url":
+  {
+    "api_aumento": "http://localhost:5000/TFG-Computadores/api-aumento/aumento",
+    "datasets": "https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/datasets/"
+  },
+  "gcp":
+  {
+    "bucket": "gs://tfg-impresionismo/"
+  },
+  "dataset":
+  {
+    "monet2photo":
+    {
+      "imagen_pintor_muestra": "00360.jpg",
+      "imagen_foto_muestra": "2014-08-24 16_41_27.jpg"
+    },
+    "cezanne2photo":
+    {
+      "imagen_pintor_muestra": "00100.jpg",
+      "imagen_foto_muestra": "2014-08-24 16_41_27.jpg"
+    },
+    "ukioye2photo":
+    {
+      "imagen_pintor_muestra": "01214.jpg",
+      "imagen_foto_muestra": "2014-08-24 16_41_27.jpg"
+    },
+    "vangogh2photo":
+    {
+      "imagen_pintor_muestra": "00021.jpg",
+      "imagen_foto_muestra": "2014-08-24 16_41_27.jpg"
+    }
+  },
+  "varios":
+  {
+    "mascara_logs" : "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}

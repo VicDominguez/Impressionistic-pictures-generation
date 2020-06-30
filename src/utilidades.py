@@ -1,3 +1,4 @@
+import json
 import logging
 import pathlib
 import platform
@@ -8,7 +9,7 @@ from datetime import datetime
 
 from tensorflow.keras.utils import get_file
 
-from singleton import Singleton
+from src.singleton import Singleton  # TODO quitar esto
 
 
 def timestamp_fancy():
@@ -39,70 +40,103 @@ def is_tool(name):
 
 
 def gsutil_disponible():
+    """Revisa si está disponible la herramienta gsutil, necesaria para las ejecuciones en GCP"""
     return is_tool("gsutil")
 
 
 class Utilidades(metaclass=Singleton):
     __instance = None
 
-    def __init__(self, version=0, dataset="monet2photo"):
-        self.version = str(version)
-        self._ruta_logs = pathlib.Path("../logs", dataset, self.version)
-        self._ruta_logs_train = self._ruta_logs / "train"
-        self._ruta_logs_test = self._ruta_logs / "test"
+    # TODO slots
 
-        self._ruta_imagenes = pathlib.Path("../imagenes", dataset, self.version)
-        self._ruta_modelo = pathlib.Path("../modelos", dataset, self.version)
+    def __init__(self, version, dataset, archivo_configuracion):
+        self._version = str(version)
+        self._dataset = str(dataset)
 
-        self._ruta_pesos_modelo = self._ruta_modelo / "pesos"
-        self._ruta_modelo_configuracion = self._ruta_modelo / "config"
-
-        self.dataset = dataset
-        self._archivo_dataset = dataset + ".zip"
+        # Configuramos el resto de parámetros
+        self._ruta_logs = pathlib.Path("../logs", self._dataset, self._version)
+        self._ruta_modelo = pathlib.Path("../modelos", self._dataset, self._version)
         self._ruta_raiz_dataset = pathlib.Path("../datasets")
-        self._ruta_dataset = self._ruta_raiz_dataset / self.dataset
-        self._repo = "https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/datasets/" + self._archivo_dataset
+        self._ruta_tfcache = pathlib.Path("../tfcache")  # TODO se usa?
+
+        self._ruta_logs_train = self._ruta_logs / "train"
+        self._ruta_logs_test = self._ruta_logs / "test"  # TODO se usa?
+
+        self._ruta_modelo_pesos = self._ruta_modelo / "pesos"
+        self._ruta_modelo_configuracion = self._ruta_modelo / "config"
+        self._ruta_modelo_imagenes = self._ruta_modelo / "imagenes"
+
+        self._archivo_dataset = self._dataset + ".zip"
+        self._ruta_dataset = self._ruta_raiz_dataset / self._dataset
 
         self._ruta_dataset_train_pintor = self._ruta_dataset / "trainA"
         self._ruta_dataset_train_foto = self._ruta_dataset / "trainB"
         self._ruta_dataset_test_pintor = self._ruta_dataset / "testA"
         self._ruta_dataset_test_foto = self._ruta_dataset / "testB"
 
-        self._ruta_padre_cache = pathlib.Path("../tfcache")
-        self._ruta_cache = self._ruta_padre_cache / self.dataset / self.version
+        self._ruta_cache = self._ruta_tfcache / self._dataset / self._version
         # las caches son excluyentes entre iteraciones
 
-        self.bucket_gcp = "gs://tfg-impresionismo/"
+        # Leemos el fichero json
+        with open(archivo_configuracion) as archivo:
+            datos_json = json.load(archivo)
 
-        self._ruta_archivo_muestra_pintor = self._ruta_dataset_test_pintor / "00960.jpg"
+        # Leemos los parámetros del modelo
+        self._tasa_aprendizaje = float(datos_json["configuracion_modelo"]["tasa_aprendizaje"])
+        self._lambda_reconstruccion = float(datos_json["configuracion_modelo"]["lambda_reconstruccion"])
+        self._lambda_validacion = int(datos_json["configuracion_modelo"]["lambda_validacion"])
+        self._lambda_identidad = int(datos_json["configuracion_modelo"]["lambda_identidad"])
+        self._ancho = int(datos_json["configuracion_modelo"]["ancho"])
+        self._alto = int(datos_json["configuracion_modelo"]["alto"])
+        self._canales = int(datos_json["configuracion_modelo"]["canales"])
+        self._epochs = int(datos_json["configuracion_modelo"]["epochs"])
+        self._tamanio_buffer = int(datos_json["configuracion_modelo"]["tamanio_buffer"])
+        self._tamanio_batch = int(datos_json["configuracion_modelo"]["tamanio_batch"])
+        self._filtros_generador = int(datos_json["configuracion_modelo"]["filtros_generador"])
+        self._filtros_discriminador = int(datos_json["configuracion_modelo"]["filtros_discriminador"])
+
+        self._url_datasets = datos_json["url"]["datasets"] + self._archivo_dataset
+        self._url_api_aumento = datos_json["url"]["api_aumento"]
+
+        self._gcp_bucket = datos_json["gcp"]["bucket"]
+
+        self._imagen_pintor_muestra = datos_json["dataset"][self._dataset]["imagen_pintor_muestra"]
+        self._imagen_foto_muestra = datos_json["dataset"][self._dataset]["imagen_foto_muestra"]
+
+        if platform.system() == "Windows":  # Compatibilidad entre Windows y Linux. Windows no admite :
+            self._imagen_foto_muestra.replace(":", "_")
+        else:
+            self._imagen_foto_muestra.replace("_", ":")
+
+        self._ruta_archivo_muestra_pintor = self._ruta_dataset_test_pintor / self._imagen_pintor_muestra
         # Windows no admite :
-        self._ruta_archivo_muestra_foto = self._ruta_dataset_test_foto / (
-            '2014-08-15 08_48_43.jpg' if platform.system() == "Windows" else '2014-08-15 08:48:43.jpg')
+        self._ruta_archivo_muestra_foto = self._ruta_dataset_test_foto / self._imagen_foto_muestra
 
-        self._mascara_formateo_log = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        self._mascara_logs = datos_json["varios"]["mascara_logs"]
 
         self._inicializar_directorios()
         self._logger = self.obtener_logger("utilidades")
 
     def _inicializar_directorios(self):
         """Crea los directorios a usar"""
-        self._ruta_imagenes.mkdir(parents=True, exist_ok=True)
         self._ruta_logs.mkdir(parents=True, exist_ok=True)
         self._ruta_logs_train.mkdir(parents=True, exist_ok=True)
         self._ruta_logs_test.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_configuracion.mkdir(parents=True, exist_ok=True)
-        self._ruta_pesos_modelo.mkdir(parents=True, exist_ok=True)
-        if self._ruta_padre_cache.exists():
-            shutil.rmtree(_ruta_a_string(self._ruta_padre_cache), ignore_errors=False, onerror=None)
+        self._ruta_modelo_pesos.mkdir(parents=True, exist_ok=True)
+        self._ruta_modelo_imagenes.mkdir(parents=True, exist_ok=True)
+        # if self._ruta_padre_cache.exists(): #TODO solucionar este error
+        #    shutil.rmtree(_ruta_a_string(self._ruta_padre_cache), ignore_errors=False, onerror=None)
         self._ruta_cache.mkdir(parents=True, exist_ok=True)
 
     def asegurar_dataset(self):
+        """Si no está el dataset en local, se descarga"""
         if not self._ruta_dataset.exists():
             self._logger.info("Descarga del dataset del repositorio")
             self._ruta_dataset.mkdir(parents=True)
-            get_file(origin=self._repo, fname=self._archivo_dataset, extract=True, cache_dir=self._ruta_raiz_dataset,
-                     cache_subdir="./")
+            get_file(origin=self._url_datasets, fname=self._archivo_dataset, extract=True,
+                     cache_dir=self._ruta_raiz_dataset, cache_subdir="./")
 
         assert self._ruta_dataset_train_pintor.exists(), "No existe el directorio de train pintor"
         assert self._ruta_dataset_train_foto.exists(), "No existe el directorio de train real"
@@ -142,7 +176,7 @@ class Utilidades(metaclass=Singleton):
         return _ruta_a_string(self._ruta_cache / (nombre + ".tfcache"))
 
     def obtener_archivo_imagen_a_guardar(self, nombre):
-        return _ruta_a_string(self._ruta_imagenes / (str(nombre) + ".png"))
+        return _ruta_a_string(self._ruta_modelo_imagenes / (str(nombre) + ".png"))
 
     def obtener_ruta_modelo(self):
         return _ruta_a_string(self._ruta_modelo)
@@ -169,25 +203,25 @@ class Utilidades(metaclass=Singleton):
         return _ruta_a_string(self._ruta_modelo_configuracion / "generador_foto.png")
 
     def obtener_ruta_fichero_modelo(self):
-        return _ruta_a_string(self._ruta_pesos_modelo / "modelo_combinado.h5")
+        return _ruta_a_string(self._ruta_modelo_pesos / "modelo_combinado.h5")
 
     def obtener_ruta_fichero_discriminador_pintor(self):
-        return _ruta_a_string(self._ruta_pesos_modelo / "discriminador_pintor.h5")
+        return _ruta_a_string(self._ruta_modelo_pesos / "discriminador_pintor.h5")
 
     def obtener_ruta_fichero_discriminador_foto(self):
-        return _ruta_a_string(self._ruta_pesos_modelo / "discriminador_foto.h5")
+        return _ruta_a_string(self._ruta_modelo_pesos / "discriminador_foto.h5")
 
     def obtener_ruta_fichero_generador_pintor(self):
-        return _ruta_a_string(self._ruta_pesos_modelo / "generador_pintor.h5")
+        return _ruta_a_string(self._ruta_modelo_pesos / "generador_pintor.h5")
 
     def obtener_ruta_fichero_generador_foto(self):
-        return _ruta_a_string(self._ruta_pesos_modelo / "generador_foto.h5")
+        return _ruta_a_string(self._ruta_modelo_pesos / "generador_foto.h5")
 
     def obtener_ruta_fichero_pesos_modelo(self):
-        return _ruta_a_string(self._ruta_pesos_modelo / "pesos.h5")
+        return _ruta_a_string(self._ruta_modelo_pesos / "pesos.h5")
 
     def obtener_ruta_fichero_pesos_modelo_epoch(self, epoch):
-        return _ruta_a_string(self._ruta_pesos_modelo / ("pesos-" + str(epoch) + ".h5"))
+        return _ruta_a_string(self._ruta_modelo_pesos / ("pesos-" + str(epoch) + ".h5"))
 
     def obtener_archivo_modelo_a_guardar(self, nombre):
         return _ruta_a_string(self._ruta_modelo / (nombre + ".h5"))
@@ -195,20 +229,61 @@ class Utilidades(metaclass=Singleton):
     def _obtener_archivo_logger(self, nombre):
         return _ruta_a_string(self._ruta_logs / (nombre + ".log"))
 
-    def obtener_logger(self, nombre):
-        logger = logging.getLogger(nombre)
-        formatter = logging.Formatter(self._mascara_formateo_log)
-        logger.setLevel(logging.INFO)
+    def obtener_altura(self):
+        return self._alto
 
-        stdout_handler = logging.StreamHandler(sys.stdout)
-        stdout_handler.setFormatter(formatter)
-        file_handler = logging.FileHandler(self._obtener_archivo_logger(nombre))
-        file_handler.setFormatter(formatter)
+    def obtener_anchura(self):
+        return self._ancho
 
-        logger.addHandler(file_handler)
-        logger.addHandler(stdout_handler)
+    def obtener_canales(self):
+        return self._canales
 
-        return logger
+    def obtener_tamanio_batch(self):
+        return self._tamanio_batch
+
+    def obtener_tamanio_buffer(self):
+        return self._tamanio_buffer
+
+    def obtener_tasa_aprendizaje(self):
+        return self._tasa_aprendizaje
+
+    def obtener_lambda_reconstruccion(self):
+        return self._lambda_reconstruccion
+
+    def obtener_lambda_validacion(self):
+        return self._lambda_validacion
+
+    def obtener_lambda_reconstruccion(self):
+        return self._lambda_reconstruccion
+
+    def obtener_lambda_identidad(self):
+        return self._lambda_identidad
+
+    def obtener_filtros_generador(self):
+        return self._filtros_generador
+
+    def obtener_filtros_discriminador(self):
+        return self._filtros_discriminador
+
+    def obtener_epochs(self):
+        return self._epochs
 
     def copiar_logs_gcp(self):
-        subprocess.run(["gsutil", "cp", "-r", self.obtener_ruta_logs(), self.bucket_gcp])
+        """Ejecuta el proceso de copiar los logs al bucket de gcp"""
+        subprocess.run(["gsutil", "cp", "-r", self.obtener_ruta_logs(), self._gcp_bucket])
+
+    def obtener_logger(self, nombre):
+        """Devuelve un logger que escribe tanto en fichero como en la salida estándar"""
+        logger = logging.getLogger(nombre)
+        formateador = logging.Formatter(self._mascara_logs)
+        logger.setLevel(logging.INFO)
+
+        manejador_salida_estandar = logging.StreamHandler(sys.stdout)
+        manejador_salida_estandar.setFormatter(formateador)
+        manejador_archivo = logging.FileHandler(self._obtener_archivo_logger(nombre))
+        manejador_archivo.setFormatter(formateador)
+
+        logger.addHandler(manejador_archivo)
+        logger.addHandler(manejador_salida_estandar)
+
+        return logger
