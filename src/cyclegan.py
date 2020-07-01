@@ -297,10 +297,8 @@ class CycleGAN:
             self.logger.info("epoch " + str(epoch))
 
             for indice, (imagenes_pintor, imagenes_foto) in enumerate(lector_imagenes.cargar_batch()):
-                self.logger.info("vamos a por los discriminadores")
                 error_discriminadores_actual = self.entrenar_discriminadores(imagenes_pintor, imagenes_foto,
                                                                              umbral_verdad, umbral_falso)
-                self.logger.info("vamos a por los generadores")
                 error_generadores_actual = self.entrenar_generadores(imagenes_pintor, imagenes_foto, umbral_verdad)
 
                 error_discriminadores[indice] = error_discriminadores_actual[0]
@@ -310,7 +308,6 @@ class CycleGAN:
                 error_reconstruccion_generadores[indice] = np.mean(error_generadores_actual[3:5])
                 error_identidad_generadores[indice] = np.mean(error_generadores_actual[5:6])
 
-                self.logger.info("nbatch " + str(indice) + " del epoch " + str(epoch))
 
             # TODO test
             self.escribir_metricas_perdidas(error_discriminadores, precision_discriminadores, error_generadores,
