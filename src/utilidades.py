@@ -49,7 +49,7 @@ class Utilidades(metaclass=Singleton):
 
     # TODO slots
 
-    def __init__(self, version, dataset, archivo_configuracion):
+    def __init__(self, version, dataset, archivo_configuracion): #TODO version produccion sin descargas
         self._version = str(version)
         self._dataset = str(dataset)
 
@@ -104,9 +104,9 @@ class Utilidades(metaclass=Singleton):
         self._imagen_foto_muestra = datos_json["dataset"][self._dataset]["imagen_foto_muestra"]
 
         if platform.system() == "Windows":  # Compatibilidad entre Windows y Linux. Windows no admite :
-            self._imagen_foto_muestra.replace(":", "_")
+            self._imagen_foto_muestra = self._imagen_foto_muestra.replace(":", "_")
         else:
-            self._imagen_foto_muestra.replace("_", ":")
+            self._imagen_foto_muestra = self._imagen_foto_muestra.replace("_", ":")
 
         self._ruta_archivo_muestra_pintor = self._ruta_dataset_test_pintor / self._imagen_pintor_muestra
         # Windows no admite :
@@ -253,8 +253,6 @@ class Utilidades(metaclass=Singleton):
     def obtener_lambda_validacion(self):
         return self._lambda_validacion
 
-    def obtener_lambda_reconstruccion(self):
-        return self._lambda_reconstruccion
 
     def obtener_lambda_identidad(self):
         return self._lambda_identidad
@@ -267,6 +265,9 @@ class Utilidades(metaclass=Singleton):
 
     def obtener_epochs(self):
         return self._epochs
+
+    def obtener_url_api_aumento(self):
+        return self._url_api_aumento
 
     def copiar_logs_gcp(self):
         """Ejecuta el proceso de copiar los logs al bucket de gcp"""

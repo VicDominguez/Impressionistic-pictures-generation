@@ -19,7 +19,7 @@ def numpy_array_a_imagen(numpy_array):
     return Image.fromarray(numpy_array)
 
 
-def leer_y_normalizar_imagen(ruta, ancho, alto, canales, train=False):
+def leer_y_normalizar_imagen(ruta, ancho, alto, canales, train=False): #TODO pasar dimensiones a tupla
     """Primitiva que lee y prepocesa una imagen según si es para entrenar o no"""
     imagen = tf.io.read_file(ruta)  # Abrimos el archivo
     # Convertir el string a un tensor 3D uint8

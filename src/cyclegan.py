@@ -374,9 +374,13 @@ class CycleGAN:
         return prediccion
 
     def convertir_imagen(self, ruta_imagen, modo_destino):
-        imagen = preprocesar_imagen(ruta_imagen).numpy()
+        extension = ruta_imagen.split(".")[-1]
+        if extension.lower() == "jpg":
+            extension = "jpeg"
+        imagen = preprocesar_imagen(ruta_imagen, self.utils.obtener_anchura(), self.utils.obtener_altura(),
+                                    self.utils.obtener_canales()).numpy()
         imagen_predecida = self.predecir_imagen(imagen, modo_destino)
-        imagen_ampliada = ampliar_imagen.ampliar(imagen_predecida)
+        imagen_ampliada = ampliar_imagen.ampliar(imagen_predecida,extension, self.utils.obtener_url_api_aumento())
         return imagen_ampliada
 
     def _imagen_muestra(self, imagen_pintor, imagen_foto, epoch):

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from src.utilidades import *  # TODO quitar esto
-from src.procesado_imagenes import leer_y_normalizar_imagen, preprocesar_imagen
+from utilidades import *  # TODO quitar esto
+from procesado_imagenes import leer_y_normalizar_imagen, preprocesar_imagen
 
 
 # TODO documentacion
