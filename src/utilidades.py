@@ -53,8 +53,8 @@ def obtener_nombre_relativo_desde_string(archivo):
 
 
 class Utilidades(metaclass=Singleton):
-    __slots__ = ["_version", "_dataset", "_ruta_logs", "_ruta_modelo", "_ruta_raiz_dataset", "_ruta_tfcache",
-                 "_ruta_logs_entreno", "_ruta_logs_test", "_ruta_modelo_pesos", "_ruta_modelo_configuracion",
+    __slots__ = ["_version", "_dataset", "_ruta_logs", "_ruta_modelos", "_ruta_raiz_dataset", "_ruta_tfcache",
+                 "_ruta_logs_entreno", "_ruta_logs_test", "_ruta_modelo_modelos", "_ruta_modelo_configuracion",
                  "_ruta_modelo_imagenes", "_archivo_dataset", "_ruta_dataset", "_ruta_dataset_entreno_pintor",
                  "_ruta_dataset_entreno_foto", "_ruta_dataset_test_pintor", "_ruta_dataset_test_foto", "_ruta_cache",
                  "_tasa_aprendizaje", "_lambda_reconstruccion", "_lambda_validacion", "_lambda_identidad",
@@ -63,29 +63,28 @@ class Utilidades(metaclass=Singleton):
                  "_imagen_foto_muestra", "_ruta_archivo_muestra_pintor", "_ruta_archivo_muestra_foto", "_mascara_logs",
                  "_logger"]
 
-    def __init__(self, version, dataset, archivo_configuracion):  # TODO revisar si hace falta herencia
+    def __init__(self, version, dataset, archivo_configuracion):
         self._version = str(version)
         self._dataset = str(dataset)
 
         # Leemos el fichero json
         ruta_configruacion = pathlib.Path("../configuracion", archivo_configuracion).resolve()
 
-
         with open(ruta_configruacion) as archivo:
             datos_json = json.load(archivo)
 
         # Configuramos el resto de parámetros
         self._ruta_logs = pathlib.Path("../logs", self._dataset, self._version)
-        self._ruta_modelo = pathlib.Path("../modelos", self._dataset, self._version)
+        self._ruta_modelos = pathlib.Path("../modelos", self._dataset, self._version)
         self._ruta_raiz_dataset = pathlib.Path("../datasets")
         self._ruta_tfcache = pathlib.Path("../tfcache")
 
         self._ruta_logs_entreno = self._ruta_logs / "entreno"
         self._ruta_logs_test = self._ruta_logs / "test"
 
-        self._ruta_modelo_pesos = self._ruta_modelo / "pesos"
-        self._ruta_modelo_configuracion = self._ruta_modelo / "config"
-        self._ruta_modelo_imagenes = self._ruta_modelo / "imagenes"
+        self._ruta_modelo_modelos = self._ruta_modelos / "modelo"
+        self._ruta_modelo_configuracion = self._ruta_modelos / "config"
+        self._ruta_modelo_imagenes = self._ruta_modelos / "imagenes"
 
         self._archivo_dataset = self._dataset + ".zip"
         self._ruta_dataset = self._ruta_raiz_dataset / self._dataset
@@ -140,9 +139,9 @@ class Utilidades(metaclass=Singleton):
         self._ruta_logs.mkdir(parents=True, exist_ok=True)
         self._ruta_logs_entreno.mkdir(parents=True, exist_ok=True)
         self._ruta_logs_test.mkdir(parents=True, exist_ok=True)
-        self._ruta_modelo.mkdir(parents=True, exist_ok=True)
+        self._ruta_modelos.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_configuracion.mkdir(parents=True, exist_ok=True)
-        self._ruta_modelo_pesos.mkdir(parents=True, exist_ok=True)
+        self._ruta_modelo_modelos.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_imagenes.mkdir(parents=True, exist_ok=True)
         if self._ruta_tfcache.exists():  # TODO probar esto en detalle
             shutil.rmtree(_ruta_a_string(self._ruta_tfcache), ignore_errors=False, onerror=None)
@@ -221,9 +220,6 @@ class Utilidades(metaclass=Singleton):
     def obtener_archivo_imagen_a_guardar(self, nombre):
         return _ruta_a_string(self._ruta_modelo_imagenes / (str(nombre) + ".png"))
 
-    def obtener_ruta_modelo(self):
-        return _ruta_a_string(self._ruta_modelo)
-
     def obtener_ruta_archivo_modelo_parametros(self):
         return _ruta_a_string(self._ruta_modelo_configuracion / "parametros.pkl")
 
@@ -245,29 +241,34 @@ class Utilidades(metaclass=Singleton):
     def obtener_ruta_archivo_generador_foto_esquema(self):
         return _ruta_a_string(self._ruta_modelo_configuracion / "generador_foto.png")
 
+    def obtener_ultimos_pesos(self):
+        lista_pesos = list(pathlib.Path(self._ruta_modelo_modelos).rglob("pesos*.h5"))  # obtenemos la lista de pesos
+        if lista_pesos:
+            maximo = max(list(map(lambda x: int(str(x).split("-")[-1].split(".")[0]), lista_pesos)))
+            # procesamos (si hay) el nombre de fichero:
+            # nos quedamos con la parte dcha del guion y la izquierda del punto, es decir
+            # el numero de epoch. Obtenemos el maximo
+            return _ruta_a_string(self._ruta_modelo_modelos / ("pesos-" + str(maximo) + ".h5")), maximo
+        else:
+            return None, 0
+
     def obtener_ruta_fichero_modelo(self):
-        return _ruta_a_string(self._ruta_modelo_pesos / "modelo_combinado.h5")
+        return _ruta_a_string(self._ruta_modelo_modelos / "modelo_combinado.h5")
 
     def obtener_ruta_fichero_discriminador_pintor(self):
-        return _ruta_a_string(self._ruta_modelo_pesos / "discriminador_pintor.h5")
+        return _ruta_a_string(self._ruta_modelo_modelos / "discriminador_pintor.h5")
 
     def obtener_ruta_fichero_discriminador_foto(self):
-        return _ruta_a_string(self._ruta_modelo_pesos / "discriminador_foto.h5")
+        return _ruta_a_string(self._ruta_modelo_modelos / "discriminador_foto.h5")
 
     def obtener_ruta_fichero_generador_pintor(self):
-        return _ruta_a_string(self._ruta_modelo_pesos / "generador_pintor.h5")
+        return _ruta_a_string(self._ruta_modelo_modelos / "generador_pintor.h5")
 
     def obtener_ruta_fichero_generador_foto(self):
-        return _ruta_a_string(self._ruta_modelo_pesos / "generador_foto.h5")
+        return _ruta_a_string(self._ruta_modelo_modelos / "generador_foto.h5")
 
-    def obtener_ruta_fichero_pesos_modelo(self):
-        return _ruta_a_string(self._ruta_modelo_pesos / "pesos.h5")
-
-    def obtener_ruta_fichero_pesos_modelo_epoch(self, epoch):
-        return _ruta_a_string(self._ruta_modelo_pesos / ("pesos-" + str(epoch) + ".h5"))
-
-    def obtener_archivo_modelo_a_guardar(self, nombre):
-        return _ruta_a_string(self._ruta_modelo / (nombre + ".h5"))
+    def obtener_ruta_fichero_modelo_por_epoch(self, epoch):
+        return _ruta_a_string(self._ruta_modelo_modelos / ("pesos-" + str(epoch) + ".h5"))
 
     def _obtener_archivo_logger(self, nombre):
         return _ruta_a_string(self._ruta_logs / (nombre + ".log"))

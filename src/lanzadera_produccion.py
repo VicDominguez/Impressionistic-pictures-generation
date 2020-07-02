@@ -1,15 +1,10 @@
 import argparse
 import pathlib
-from pathlib import Path
 
 from cyclegan import CycleGAN
-from cargador_imagenes import CargadorImagenes
 from utilidades import Utilidades, obtener_nombre_relativo_desde_string
-from PIL import Image
 
 if __name__ == "__main__":
-    # TODO revisar si se necesita configuracion y si es asi los path
-    # TODO documentacion
 
     # Comandos entrada
     parser = argparse.ArgumentParser()
@@ -27,17 +22,17 @@ if __name__ == "__main__":
                         default="configuracion_128.json")
     args = vars(parser.parse_args())
 
+    # inicializamos la clase de utilidades y la red
     utils = Utilidades(args["version"], args["dataset"], args["configuracion"])
     logger = utils.obtener_logger("lanzadera produccion")
 
     utils.asegurar_dataset()
     logger.info("Dataset en linea")
 
-    gan = CycleGAN("resnet")  # TODO es necesario saber aqui la arquitectura??
+    gan = CycleGAN(restaurar=True)
     logger.info("Red neuronal lista")
-    gan.cargar_pesos()
-    logger.info("Pesos cargados")
 
+    # listamos las imagenes que queremos traducir
     tipos_imagenes_admitidas = ['jpg', 'jpeg', 'bmp', 'png']
 
     imagenes_entrada_usuario = [(item.resolve()) for item in pathlib.Path("../input").rglob("*")
@@ -46,6 +41,7 @@ if __name__ == "__main__":
     imagenes_entrada_test_para_foto = utils.obtener_rutas_imagenes_test_pintor()
     imagenes_entrada_test_para_pintor = utils.obtener_rutas_imagenes_test_foto()
 
+    # creamos las carpetas de salidas
     ruta_raiz_salida_usuario = (pathlib.Path("../output/") / args["dataset"] / args["version"]).resolve()
     ruta_raiz_test_foto = (pathlib.Path("../output/") / args["dataset"] / args["version"] / "test_foto").resolve()
     ruta_raiz_test_pintor = (pathlib.Path("../output/") / args["dataset"] / args["version"] / "test_pintor").resolve()
@@ -54,12 +50,14 @@ if __name__ == "__main__":
     ruta_raiz_test_foto.mkdir(parents=True, exist_ok=True)
     ruta_raiz_test_pintor.mkdir(parents=True, exist_ok=True)
 
+    # especificamos las rutas de salida
     imagenes_salida_usuario = [ruta_raiz_salida_usuario / imagen.parts[-1] for imagen in imagenes_entrada_usuario]
     imagenes_salida_test_para_foto = [ruta_raiz_test_foto / obtener_nombre_relativo_desde_string(imagen)
                                       for imagen in imagenes_entrada_test_para_foto]
     imagenes_salida_test_para_pintor = [ruta_raiz_test_pintor / obtener_nombre_relativo_desde_string(imagen)
                                         for imagen in imagenes_entrada_test_para_pintor]
 
+    # calculamos
     for entrada, salida in zip(imagenes_entrada_usuario, imagenes_salida_usuario):
         logger.info("Procesando " + salida.parts[-1])
         if salida.exists():

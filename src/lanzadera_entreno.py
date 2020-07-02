@@ -1,7 +1,7 @@
 import argparse
 import pathlib
 
-from cyclegan import CycleGAN  # TODO Quitar esto
+from cyclegan import CycleGAN
 from cargador_imagenes import CargadorImagenes
 from utilidades import Utilidades
 
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     # Comprobamos que los parámetros son válidos
-    assert pathlib.Path( "../configuracion", args["configuracion"]).exists(), "El archivo no existe"
+    assert pathlib.Path("../configuracion", args["configuracion"]).exists(), "El archivo no existe"
     assert args["dataset"] in ["monet2photo", "cezanne2photo", "ukiyoe2photo", "vangogh2photo"], \
         "El dataset no es valido"
     assert args["arquitectura"] in ["resnet", "unet"], "El dataset no es valido"

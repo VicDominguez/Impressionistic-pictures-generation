@@ -9,7 +9,7 @@ from keras.layers import Activation, Concatenate, Dropout, Input
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2D, Conv2DTranspose, UpSampling2D
 from keras.layers.merge import add
-from keras.models import Model
+from keras.models import Model, load_model
 from keras.optimizers import Adam
 from keras.utils import plot_model
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
@@ -28,7 +28,7 @@ class CycleGAN:
                  "disc_patch", "inicializacion_pesos", "discriminador_pintor", "discriminador_foto", "generador_foto",
                  "generador_pintor", "modelo_combinado"]
 
-    def __init__(self, tipo_generador):
+    def __init__(self, restaurar=False, tipo_generador="resnet"):
 
         def crear_generador_unet():
 
@@ -164,59 +164,80 @@ class CycleGAN:
 
         self.utils = Utilidades()
         self.logger = self.utils.obtener_logger("cyclegan")
-        self.tipo_generador = tipo_generador
-
-        # obtenemos parámetros del modelo
-        self.tasa_aprendizaje = self.utils.obtener_tasa_aprendizaje()
-        self.lambda_validacion = self.utils.obtener_lambda_validacion()
-        self.lambda_reconstruccion = self.utils.obtener_lambda_reconstruccion()
-        self.lambda_identidad = self.utils.obtener_lambda_identidad()
-        self.filtros_generador = self.utils.obtener_filtros_generador()
-        self.filtros_discriminador = self.utils.obtener_filtros_discriminador()
         self.dimensiones = self.utils.obtener_dimensiones()
-        self.epoch_actual = 0
 
-        # Calculate salida shape of D (PatchGAN) #TODO revisar esto
-        patch = int(self.dimensiones[1] / 2 ** 3)
-        self.disc_patch = (patch, patch, 1)
-
-        self.inicializacion_pesos = RandomNormal(mean=0., stddev=0.02)
-
-        # Creamos los discriminadores
-        self.discriminador_pintor = crear_discriminador()
-        self.discriminador_foto = crear_discriminador()
-
-        self.discriminador_pintor.compile(loss='mse',
-                                          optimizer=Adam(self.tasa_aprendizaje, 0.5),
-                                          metrics=['accuracy'])
-        self.discriminador_foto.compile(loss='mse',
-                                        optimizer=Adam(self.tasa_aprendizaje, 0.5),
-                                        metrics=['accuracy'])
-
-        # Creamos los generadores
-        if self.tipo_generador == 'unet':
-            self.generador_foto = crear_generador_unet()
-            self.generador_pintor = crear_generador_unet()
+        if restaurar:
+            self.logger.info("Cargando modelo")
+            self.discriminador_pintor = load_model(self.utils.obtener_ruta_fichero_discriminador_pintor(),
+                                                   custom_objects={'InstanceNormalization': InstanceNormalization})
+            self.discriminador_foto = load_model(self.utils.obtener_ruta_fichero_discriminador_foto(),
+                                                 custom_objects={'InstanceNormalization': InstanceNormalization})
+            self.generador_pintor = load_model(self.utils.obtener_ruta_fichero_generador_pintor(),
+                                               custom_objects={'ReflectionPadding2D': ReflectionPadding2D,
+                                                               'InstanceNormalization': InstanceNormalization})
+            self.generador_foto = load_model(self.utils.obtener_ruta_fichero_generador_foto(),
+                                             custom_objects={'ReflectionPadding2D': ReflectionPadding2D,
+                                                             'InstanceNormalization': InstanceNormalization})
+            self.modelo_combinado = load_model(self.utils.obtener_ruta_fichero_modelo(),
+                                               custom_objects={'ReflectionPadding2D': ReflectionPadding2D,
+                                                               'InstanceNormalization': InstanceNormalization})
+            self.logger.info("Modelo cargado")
         else:
-            self.generador_foto = crear_generador_resnet()
-            self.generador_pintor = crear_generador_resnet()
+            self.logger.info("Creando modelo")
+            self.tipo_generador = tipo_generador
 
-        # Para el modelo combinado solo entrenamos los generadores
-        self.discriminador_pintor.trainable = False
-        self.discriminador_foto.trainable = False
+            # obtenemos parámetros del modelo
+            self.tasa_aprendizaje = self.utils.obtener_tasa_aprendizaje()
+            self.lambda_validacion = self.utils.obtener_lambda_validacion()
+            self.lambda_reconstruccion = self.utils.obtener_lambda_reconstruccion()
+            self.lambda_identidad = self.utils.obtener_lambda_identidad()
+            self.filtros_generador = self.utils.obtener_filtros_generador()
+            self.filtros_discriminador = self.utils.obtener_filtros_discriminador()
+            self.epoch_actual = 0
 
-        self.modelo_combinado = self._crear_modelo()
+            # Calculate salida shape of D (PatchGAN) #TODO revisar esto
+            patch = int(self.dimensiones[1] / 2 ** 3)
+            self.disc_patch = (patch, patch, 1)
 
-        self.modelo_combinado.compile(loss=['mse', 'mse',
-                                            'mae', 'mae',
-                                            'mae', 'mae'],
-                                      loss_weights=[self.lambda_validacion, self.lambda_validacion,
-                                                    self.lambda_reconstruccion, self.lambda_reconstruccion,
-                                                    self.lambda_identidad, self.lambda_identidad],
-                                      optimizer=Adam(self.tasa_aprendizaje, 0.5))
+            self.inicializacion_pesos = RandomNormal(mean=0., stddev=0.02)
 
-        self.discriminador_pintor.trainable = True
-        self.discriminador_foto.trainable = True
+            # Creamos los discriminadores
+            self.discriminador_pintor = crear_discriminador()
+            self.discriminador_foto = crear_discriminador()
+
+            self.discriminador_pintor.compile(loss='mse',
+                                              optimizer=Adam(self.tasa_aprendizaje, 0.5),
+                                              metrics=['accuracy'])
+            self.discriminador_foto.compile(loss='mse',
+                                            optimizer=Adam(self.tasa_aprendizaje, 0.5),
+                                            metrics=['accuracy'])
+
+            # Creamos los generadores
+            if self.tipo_generador == 'unet':
+                self.generador_foto = crear_generador_unet()
+                self.generador_pintor = crear_generador_unet()
+            else:
+                self.generador_foto = crear_generador_resnet()
+                self.generador_pintor = crear_generador_resnet()
+
+            # Para el modelo combinado solo entrenamos los generadores
+            self.discriminador_pintor.trainable = False
+            self.discriminador_foto.trainable = False
+
+            self.modelo_combinado = self._crear_modelo()
+
+            self.modelo_combinado.compile(loss=['mse', 'mse',
+                                                'mae', 'mae',
+                                                'mae', 'mae'],
+                                          loss_weights=[self.lambda_validacion, self.lambda_validacion,
+                                                        self.lambda_reconstruccion, self.lambda_reconstruccion,
+                                                        self.lambda_identidad, self.lambda_identidad],
+                                          optimizer=Adam(self.tasa_aprendizaje, 0.5))
+
+            self.discriminador_pintor.trainable = True
+            self.discriminador_foto.trainable = True
+            #cargamos los ultimos pesos, si hay
+            self.cargar_ultimos_pesos()
 
     def train(self, lector_imagenes):
 
@@ -242,7 +263,7 @@ class CycleGAN:
         validez_generadores_entreno = np.ones(numero_batches_entreno)
         error_reconstruccion_generadores_entreno = np.ones(numero_batches_entreno)
         error_identidad_generadores_entreno = np.ones(numero_batches_entreno)
-        
+
         error_discriminadores_test = np.ones(numero_batches_test)
         precision_discriminadores_test = np.ones(numero_batches_test)
         error_generadores_test = np.ones(numero_batches_test)
@@ -262,8 +283,8 @@ class CycleGAN:
 
             comienzo_epoch = timestamp()
             self.logger.info("epoch " + str(epoch))
-            
-            #paso de entreno
+
+            # paso de entreno
             for indice, (imagenes_pintor, imagenes_foto) in enumerate(lector_imagenes.cargar_batch(entreno=True)):
                 error_discriminadores_actual = self._entrenar_discriminadores(imagenes_pintor, imagenes_foto,
                                                                               umbral_verdad, umbral_falso)
@@ -275,7 +296,7 @@ class CycleGAN:
                 validez_generadores_entreno[indice] = np.mean(error_generadores_actual[1:3])
                 error_reconstruccion_generadores_entreno[indice] = np.mean(error_generadores_actual[3:5])
                 error_identidad_generadores_entreno[indice] = np.mean(error_generadores_actual[5:6])
-            
+
             # paso test
             for indice, (imagenes_pintor, imagenes_foto) in enumerate(lector_imagenes.cargar_batch(entreno=False)):
                 error_discriminadores_actual = self._entrenar_discriminadores(imagenes_pintor, imagenes_foto,
@@ -288,29 +309,30 @@ class CycleGAN:
                 validez_generadores_test[indice] = np.mean(error_generadores_actual[1:3])
                 error_reconstruccion_generadores_test[indice] = np.mean(error_generadores_actual[3:5])
                 error_identidad_generadores_test[indice] = np.mean(error_generadores_actual[5:6])
-            
-            self._escribir_metricas_escalares(error_discriminadores_entreno, precision_discriminadores_entreno, 
-                                              error_generadores_entreno, validez_generadores_entreno, 
-                                              error_reconstruccion_generadores_entreno, 
+
+            self._escribir_metricas_escalares(error_discriminadores_entreno, precision_discriminadores_entreno,
+                                              error_generadores_entreno, validez_generadores_entreno,
+                                              error_reconstruccion_generadores_entreno,
                                               error_identidad_generadores_entreno, sumario_entreno, epoch)
-            
+
             self._escribir_metricas_escalares(error_discriminadores_test, precision_discriminadores_test,
                                               error_generadores_test, validez_generadores_test,
                                               error_reconstruccion_generadores_test,
                                               error_identidad_generadores_test, sumario_test, epoch)
 
             self._imagen_muestra(imagen_muestra_pintor, imagen_muestra_foto, epoch)
-            self._guardar_progreso(epoch)
             fin_epoch = timestamp()
+
+            if epoch % 5 == 0:
+                self._guardar_progreso(epoch)
 
             self.logger.info("epoch " + str(epoch) + " completado en " + str(fin_epoch - comienzo_epoch))
 
-            self.epoch_actual += 1  # TODO revisar si tiene sentido
+            self.epoch_actual += 1
 
         fin_entrenamiento = timestamp()
         self.logger.info("Entrenamiento completado en " + str(fin_entrenamiento - comienzo_entrenamiento))
         self._guardar_modelo()
-        self.serializar_red()  # TODO revisar si esto procede hacerlo aqui
 
     def convertir_imagen(self, ruta_imagen, modo_destino, factor_aumento):
         # obtenemos la extension de la imagen
@@ -386,7 +408,7 @@ class CycleGAN:
             falsificacion_pintor, umbral_falso)
         error_discriminador_foto_real = self.discriminador_foto.test_on_batch(imagenes_foto, umbral_verdad)
         error_discriminador_foto_falsificacion = self.discriminador_foto.test_on_batch(falsificacion_foto,
-                                                                                        umbral_falso)
+                                                                                       umbral_falso)
         # Metricas
         error_discriminador_pintor = 0.5 * np.add(error_discriminador_pintor_real,
                                                   error_discriminador_pintor_falsificacion)
@@ -406,9 +428,9 @@ class CycleGAN:
     @tf.function
     def _test_generadores(self, imagenes_pintor, imagenes_foto, umbral_verdad):
         return self.modelo_combinado.test_on_batch([imagenes_pintor, imagenes_foto],
-                                                    [umbral_verdad, umbral_verdad,
-                                                     imagenes_pintor, imagenes_foto,
-                                                     imagenes_pintor, imagenes_foto])
+                                                   [umbral_verdad, umbral_verdad,
+                                                    imagenes_pintor, imagenes_foto,
+                                                    imagenes_pintor, imagenes_foto])
 
     def _predecir_imagen(self, imagen, modo_destino):
         if modo_destino.lower() == "pintor":
@@ -457,7 +479,7 @@ class CycleGAN:
         with file_writer.as_default():
             tf.summary.image("Imagen resumen", imagen_tf, step=epoch)
 
-    def serializar_red(self):  # TODO poner en lanzadera entreno
+    def serializar_red(self):
 
         with open(self.utils.obtener_ruta_archivo_modelo_parametros(), 'wb') as archivo:
             pkl.dump([self.tasa_aprendizaje, self.lambda_reconstruccion, self.lambda_validacion, self.lambda_identidad,
@@ -477,11 +499,7 @@ class CycleGAN:
                    show_shapes=True, show_layer_names=True, dpi=300)
 
     def _guardar_modelo(self):
-        # TODO revisar si o pesos o modelo combinado o completo o que. Solo una de las 3 puede valer
-        self.modelo_combinado.save_weights(self.utils.obtener_ruta_fichero_pesos_modelo())
         self.modelo_combinado.save(self.utils.obtener_ruta_fichero_modelo())
-        self.modelo_combinado.save(self.utils.obtener_archivo_modelo_a_guardar("modelo_entrenado"))
-
         self.discriminador_pintor.save(self.utils.obtener_ruta_fichero_discriminador_pintor())
         self.discriminador_foto.save(self.utils.obtener_ruta_fichero_discriminador_foto())
         self.generador_pintor.save(self.utils.obtener_ruta_fichero_generador_pintor())
@@ -490,11 +508,15 @@ class CycleGAN:
         with open(self.utils.obtener_ruta_archivo_modelo_objeto(), "wb") as archivo:
             pkl.dump(self, archivo)
 
-    def cargar_pesos(self):  # TODO Carga los pesos o todo??
-        self.modelo_combinado.load_weights(self.utils.obtener_ruta_fichero_pesos_modelo())
+    def cargar_ultimos_pesos(self):  # TODO Comprobar
+        self.logger.info("Cargamos los pesos más recientes")
+        ruta_ultimo_checkpoint, self.epoch_actual = self.utils.obtener_ultimos_pesos()
+        self.logger.info("Los ultimos pesos eran del epoch :" + str(self.epoch_actual))
+        if ruta_ultimo_checkpoint is not None:
+            self.modelo_combinado.load_weights(ruta_ultimo_checkpoint)
 
     def _guardar_progreso(self, epoch):
-        self.modelo_combinado.save_weights(self.utils.obtener_ruta_fichero_pesos_modelo_epoch(epoch))
+        self.modelo_combinado.save_weights(self.utils.obtener_ruta_fichero_modelo_por_epoch(epoch+1))
 
     @staticmethod
     def _escribir_metricas_escalares(error_discriminadores, precision_discriminadores, error_generadores,
