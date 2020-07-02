@@ -9,7 +9,7 @@ from datetime import datetime
 
 from tensorflow.keras.utils import get_file
 
-from singleton import Singleton  # TODO quitar esto
+from singleton import Singleton
 
 
 def timestamp_fancy():
@@ -44,23 +44,44 @@ def gsutil_disponible():
     return is_tool("gsutil")
 
 
+def obtener_nombre_relativo_desde_string(archivo):
+    """Devuelve el nombre del archivo a partir de un string que contiene la ruta absoluta del mismo.
+
+    Parámetros:
+        archivo: string con la ruta de fichero"""
+    return archivo.split("\\")[-1] if platform.system() == "Windows" else archivo.split("/")[-1]
+
+
 class Utilidades(metaclass=Singleton):
-    __instance = None
+    __slots__ = ["_version", "_dataset", "_ruta_logs", "_ruta_modelo", "_ruta_raiz_dataset", "_ruta_tfcache",
+                 "_ruta_logs_entreno", "_ruta_logs_test", "_ruta_modelo_pesos", "_ruta_modelo_configuracion",
+                 "_ruta_modelo_imagenes", "_archivo_dataset", "_ruta_dataset", "_ruta_dataset_entreno_pintor",
+                 "_ruta_dataset_entreno_foto", "_ruta_dataset_test_pintor", "_ruta_dataset_test_foto", "_ruta_cache",
+                 "_tasa_aprendizaje", "_lambda_reconstruccion", "_lambda_validacion", "_lambda_identidad",
+                 "_dimensiones", "_epochs", "_tamanio_buffer", "_tamanio_batch", "_filtros_generador",
+                 "_filtros_discriminador", "_url_datasets", "_url_api_aumento", "_gcp_bucket", "_imagen_pintor_muestra",
+                 "_imagen_foto_muestra", "_ruta_archivo_muestra_pintor", "_ruta_archivo_muestra_foto", "_mascara_logs",
+                 "_logger"]
 
-    # TODO slots
-
-    def __init__(self, version, dataset, archivo_configuracion): #TODO version produccion sin descargas
+    def __init__(self, version, dataset, archivo_configuracion):  # TODO revisar si hace falta herencia
         self._version = str(version)
         self._dataset = str(dataset)
+
+        # Leemos el fichero json
+        ruta_configruacion = pathlib.Path("../configuracion", archivo_configuracion).resolve()
+
+
+        with open(ruta_configruacion) as archivo:
+            datos_json = json.load(archivo)
 
         # Configuramos el resto de parámetros
         self._ruta_logs = pathlib.Path("../logs", self._dataset, self._version)
         self._ruta_modelo = pathlib.Path("../modelos", self._dataset, self._version)
         self._ruta_raiz_dataset = pathlib.Path("../datasets")
-        self._ruta_tfcache = pathlib.Path("../tfcache")  # TODO se usa?
+        self._ruta_tfcache = pathlib.Path("../tfcache")
 
-        self._ruta_logs_train = self._ruta_logs / "train"
-        self._ruta_logs_test = self._ruta_logs / "test"  # TODO se usa?
+        self._ruta_logs_entreno = self._ruta_logs / "entreno"
+        self._ruta_logs_test = self._ruta_logs / "test"
 
         self._ruta_modelo_pesos = self._ruta_modelo / "pesos"
         self._ruta_modelo_configuracion = self._ruta_modelo / "config"
@@ -69,26 +90,23 @@ class Utilidades(metaclass=Singleton):
         self._archivo_dataset = self._dataset + ".zip"
         self._ruta_dataset = self._ruta_raiz_dataset / self._dataset
 
-        self._ruta_dataset_train_pintor = self._ruta_dataset / "trainA"
-        self._ruta_dataset_train_foto = self._ruta_dataset / "trainB"
+        self._ruta_dataset_entreno_pintor = self._ruta_dataset / "trainA"
+        self._ruta_dataset_entreno_foto = self._ruta_dataset / "trainB"
         self._ruta_dataset_test_pintor = self._ruta_dataset / "testA"
         self._ruta_dataset_test_foto = self._ruta_dataset / "testB"
 
         self._ruta_cache = self._ruta_tfcache / self._dataset / self._version
         # las caches son excluyentes entre iteraciones
 
-        # Leemos el fichero json
-        with open(archivo_configuracion) as archivo:
-            datos_json = json.load(archivo)
-
         # Leemos los parámetros del modelo
         self._tasa_aprendizaje = float(datos_json["configuracion_modelo"]["tasa_aprendizaje"])
         self._lambda_reconstruccion = float(datos_json["configuracion_modelo"]["lambda_reconstruccion"])
         self._lambda_validacion = int(datos_json["configuracion_modelo"]["lambda_validacion"])
         self._lambda_identidad = int(datos_json["configuracion_modelo"]["lambda_identidad"])
-        self._ancho = int(datos_json["configuracion_modelo"]["ancho"])
-        self._alto = int(datos_json["configuracion_modelo"]["alto"])
-        self._canales = int(datos_json["configuracion_modelo"]["canales"])
+        _ancho = int(datos_json["configuracion_modelo"]["ancho"])
+        _alto = int(datos_json["configuracion_modelo"]["alto"])
+        _canales = int(datos_json["configuracion_modelo"]["canales"])
+        self._dimensiones = (_ancho, _alto, _canales)
         self._epochs = int(datos_json["configuracion_modelo"]["epochs"])
         self._tamanio_buffer = int(datos_json["configuracion_modelo"]["tamanio_buffer"])
         self._tamanio_batch = int(datos_json["configuracion_modelo"]["tamanio_batch"])
@@ -120,13 +138,13 @@ class Utilidades(metaclass=Singleton):
     def _inicializar_directorios(self):
         """Crea los directorios a usar"""
         self._ruta_logs.mkdir(parents=True, exist_ok=True)
-        self._ruta_logs_train.mkdir(parents=True, exist_ok=True)
+        self._ruta_logs_entreno.mkdir(parents=True, exist_ok=True)
         self._ruta_logs_test.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_configuracion.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_pesos.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_imagenes.mkdir(parents=True, exist_ok=True)
-        if self._ruta_tfcache.exists():  # TODO solucionar este error
+        if self._ruta_tfcache.exists():  # TODO probar esto en detalle
             shutil.rmtree(_ruta_a_string(self._ruta_tfcache), ignore_errors=False, onerror=None)
         self._ruta_cache.mkdir(parents=True, exist_ok=True)
 
@@ -138,18 +156,43 @@ class Utilidades(metaclass=Singleton):
             get_file(origin=self._url_datasets, fname=self._archivo_dataset, extract=True,
                      cache_dir=self._ruta_raiz_dataset, cache_subdir="./")
 
-        assert self._ruta_dataset_train_pintor.exists(), "No existe el directorio de train pintor"
-        assert self._ruta_dataset_train_foto.exists(), "No existe el directorio de train real"
+        assert self._ruta_dataset_entreno_pintor.exists(), "No existe el directorio de entreno pintor"
+        assert self._ruta_dataset_entreno_foto.exists(), "No existe el directorio de entreno real"
         assert self._ruta_dataset_test_pintor.exists(), "No existe el directorio de test pintor"
         assert self._ruta_dataset_test_foto.exists(), "No existe el directorio de test real"
         assert self._ruta_archivo_muestra_pintor.exists(), "No existe la imagen de muestra del pintor"
         assert self._ruta_archivo_muestra_foto.exists(), "No existe la imagen de muestra real"
 
-    def obtener_rutas_imagenes_train_pintor(self):
-        return obtener_rutas_imagenes(self._ruta_dataset_train_pintor)
+    def copiar_logs_gcp(self):
+        """Ejecuta el proceso de copiar los logs al bucket de gcp."""
+        subprocess.run(["gsutil", "cp", "-r", self.obtener_ruta_logs(), self._gcp_bucket])
 
-    def obtener_rutas_imagenes_train_foto(self):
-        return obtener_rutas_imagenes(self._ruta_dataset_train_foto)
+    def obtener_logger(self, nombre):
+        """Devuelve un logger que escribe tanto en fichero como en la salida estándar.
+
+        Parámetros:
+
+            nombre: nombre del logger a crear. Suele utilizarse el nombre de la clase/módulo."""
+        logger = logging.getLogger(nombre)
+        formateador = logging.Formatter(self._mascara_logs)
+        logger.setLevel(logging.INFO)
+
+        manejador_salida_estandar = logging.StreamHandler(sys.stdout)
+        manejador_salida_estandar.setFormatter(formateador)
+        manejador_archivo = logging.FileHandler(self._obtener_archivo_logger(nombre))
+        manejador_archivo.setFormatter(formateador)
+
+        logger.addHandler(manejador_archivo)
+        logger.addHandler(manejador_salida_estandar)
+
+        return logger
+
+    # Funciones para obtener los atributos privados
+    def obtener_rutas_imagenes_entreno_pintor(self):
+        return obtener_rutas_imagenes(self._ruta_dataset_entreno_pintor)
+
+    def obtener_rutas_imagenes_entreno_foto(self):
+        return obtener_rutas_imagenes(self._ruta_dataset_entreno_foto)
 
     def obtener_rutas_imagenes_test_pintor(self):
         return obtener_rutas_imagenes(self._ruta_dataset_test_pintor)
@@ -160,8 +203,8 @@ class Utilidades(metaclass=Singleton):
     def obtener_ruta_logs(self):
         return _ruta_a_string(self._ruta_logs)
 
-    def obtener_ruta_logs_train(self):
-        return _ruta_a_string(self._ruta_logs_train)
+    def obtener_ruta_logs_entreno(self):
+        return _ruta_a_string(self._ruta_logs_entreno)
 
     def obtener_ruta_logs_test(self):
         return _ruta_a_string(self._ruta_logs_test)
@@ -229,14 +272,8 @@ class Utilidades(metaclass=Singleton):
     def _obtener_archivo_logger(self, nombre):
         return _ruta_a_string(self._ruta_logs / (nombre + ".log"))
 
-    def obtener_altura(self):
-        return self._alto
-
-    def obtener_anchura(self):
-        return self._ancho
-
-    def obtener_canales(self):
-        return self._canales
+    def obtener_dimensiones(self):
+        return self._dimensiones
 
     def obtener_tamanio_batch(self):
         return self._tamanio_batch
@@ -253,7 +290,6 @@ class Utilidades(metaclass=Singleton):
     def obtener_lambda_validacion(self):
         return self._lambda_validacion
 
-
     def obtener_lambda_identidad(self):
         return self._lambda_identidad
 
@@ -268,23 +304,3 @@ class Utilidades(metaclass=Singleton):
 
     def obtener_url_api_aumento(self):
         return self._url_api_aumento
-
-    def copiar_logs_gcp(self):
-        """Ejecuta el proceso de copiar los logs al bucket de gcp"""
-        subprocess.run(["gsutil", "cp", "-r", self.obtener_ruta_logs(), self._gcp_bucket])
-
-    def obtener_logger(self, nombre):
-        """Devuelve un logger que escribe tanto en fichero como en la salida estándar"""
-        logger = logging.getLogger(nombre)
-        formateador = logging.Formatter(self._mascara_logs)
-        logger.setLevel(logging.INFO)
-
-        manejador_salida_estandar = logging.StreamHandler(sys.stdout)
-        manejador_salida_estandar.setFormatter(formateador)
-        manejador_archivo = logging.FileHandler(self._obtener_archivo_logger(nombre))
-        manejador_archivo.setFormatter(formateador)
-
-        logger.addHandler(manejador_archivo)
-        logger.addHandler(manejador_salida_estandar)
-
-        return logger

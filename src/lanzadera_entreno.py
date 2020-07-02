@@ -19,7 +19,7 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--configuracion",
                         help="Especifica el fichero de configuración que se va a usar",
                         type=str,
-                        default="configuracion.json")
+                        default="configuracion_128.json")
     parser.add_argument("-a", "--arquitectura",
                         help="Especifica el tipo de arquitectura: unet o resnet",
                         type=str,
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     # Comprobamos que los parámetros son válidos
-    assert pathlib.Path(args["configuracion"]).exists(), "El archivo no existe"
+    assert pathlib.Path( "../configuracion", args["configuracion"]).exists(), "El archivo no existe"
     assert args["dataset"] in ["monet2photo", "cezanne2photo", "ukiyoe2photo", "vangogh2photo"], \
         "El dataset no es valido"
     assert args["arquitectura"] in ["resnet", "unet"], "El dataset no es valido"

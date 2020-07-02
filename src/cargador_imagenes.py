@@ -1,137 +1,144 @@
 import tensorflow as tf
 
-from utilidades import *  # TODO quitar esto
-from procesado_imagenes import leer_y_normalizar_imagen, preprocesar_imagen
+from utilidades import *
+import procesado_imagenes
 
-
-# TODO documentacion
 
 class CargadorImagenes(metaclass=Singleton):
-    # TODO actualizar slots
-    # __slots__ = ["utils", "AUTOTUNE", "imagenes_train_pintor", "imagenes_train_foto", "imagenes_test_pintor",
-    #             "imagenes_test_foto", "dataset_train_pintor", "dataset_train_foto", "dataset_test_pintor",
-    #             "dataset_test_foto", "logger"]
+    """Clase que sirve para alimentar de imágenes a la red cuando entrena"""
 
-    def __init__(self, train=True):
+    __slots__ = ["tamanio_batch", "tamanio_buffer", "dimensiones", "logger", "numero_imagenes_entreno_pintor",
+                 "numero_imagenes_entreno_foto", "numero_imagenes_test_pintor", "numero_imagenes_test_foto",
+                 "dataset_entreno_pintor", "dataset_entreno_foto", "dataset_test_pintor", "dataset_test_foto"]
 
-        self.utils = Utilidades()
-        if train:
-            AUTOTUNE = tf.data.experimental.AUTOTUNE
-            self.imagenes_train_pintor = self.utils.obtener_rutas_imagenes_train_pintor()
-            self.imagenes_train_foto = self.utils.obtener_rutas_imagenes_train_foto()
-            self.imagenes_test_pintor = self.utils.obtener_rutas_imagenes_test_pintor()
-            self.imagenes_test_foto = self.utils.obtener_rutas_imagenes_test_foto()
+    def __init__(self):
 
-            self.logger = self.utils.obtener_logger("lector_imagenes")
+        utils = Utilidades()
 
-            start = timestamp()
-            listado_dataset_train_pintor = tf.data.Dataset.list_files(self.imagenes_train_pintor)
-            self.logger.info("listado_dataset_train_pintor " + str(timestamp() - start))
+        self.tamanio_batch = utils.obtener_tamanio_batch()
+        self.tamanio_buffer = utils.obtener_tamanio_buffer()
+        self.dimensiones = utils.obtener_dimensiones()
 
-            start = timestamp()
-            listado_dataset_train_foto = tf.data.Dataset.list_files(self.imagenes_train_foto)
-            self.logger.info("listado_dataset_train_foto " + str(timestamp() - start))
+        rutas_imagenes_entreno_pintor = utils.obtener_rutas_imagenes_entreno_pintor()
+        rutas_imagenes_entreno_foto = utils.obtener_rutas_imagenes_entreno_foto()
+        rutas_imagenes_test_pintor = utils.obtener_rutas_imagenes_test_pintor()
+        rutas_imagenes_test_foto = utils.obtener_rutas_imagenes_test_foto()
 
-            start = timestamp()
-            listado_dataset_test_pintor = tf.data.Dataset.list_files(self.imagenes_test_pintor)
-            self.logger.info("listado_dataset_test_pintor " + str(timestamp() - start))
+        # Atributos para calcular n_batches de forma eficiente
+        self.numero_imagenes_entreno_pintor = len(rutas_imagenes_entreno_pintor)
+        self.numero_imagenes_entreno_foto = len(rutas_imagenes_entreno_foto)
+        self.numero_imagenes_test_pintor = len(rutas_imagenes_test_pintor)
+        self.numero_imagenes_test_foto = len(rutas_imagenes_test_foto)
 
-            start = timestamp()
-            listado_dataset_test_foto = tf.data.Dataset.list_files(self.imagenes_test_foto)
-            self.logger.info("listado_dataset_test_foto " + str(timestamp() - start))
+        self.logger = utils.obtener_logger("lector_imagenes")
 
-            start = timestamp()
-            listado_train_pintor_cargado = listado_dataset_train_pintor.map(self._preprocesar_imagen_train,
-                                                                            num_parallel_calls=AUTOTUNE)
-            listado_train_foto_cargado = listado_dataset_train_foto.map(self._preprocesar_imagen_train,
-                                                                        num_parallel_calls=AUTOTUNE)
-            listado_test_pintor_cargado = listado_dataset_test_pintor.map(self._preprocesar_imagen_test,
-                                                                          num_parallel_calls=AUTOTUNE)
-            listado_test_foto_cargado = listado_dataset_test_foto.map(self._preprocesar_imagen_test,
-                                                                      num_parallel_calls=AUTOTUNE)
-            self.logger.info("Mapeado datasets " + str(timestamp() - start))
+        inicio = timestamp()
+        listado_dataset_entreno_pintor = tf.data.Dataset.list_files(rutas_imagenes_entreno_pintor)
+        self.logger.info("listado_dataset_entreno_pintor " + str(timestamp() - inicio))
 
-            start = timestamp()
-            self.dataset_train_pintor = self.preparar_dataset(listado_train_pintor_cargado,
-                                                              cache=self.utils.obtener_archivo_cache(
-                                                                  "dataset_train_pintor"))
-            self.dataset_train_foto = self.preparar_dataset(listado_train_foto_cargado,
-                                                            cache=self.utils.obtener_archivo_cache(
-                                                                "dataset_train_foto"))
-            self.dataset_test_pintor = self.preparar_dataset(listado_test_pintor_cargado,
-                                                             cache=self.utils.obtener_archivo_cache(
-                                                                 "dataset_test_pintor"))
-            self.dataset_test_foto = self.preparar_dataset(listado_test_foto_cargado,
-                                                           cache=self.utils.obtener_archivo_cache("dataset_test_foto"))
-            self.logger.info("Preparación datasets " + str(timestamp() - start))
+        inicio = timestamp()
+        listado_dataset_entreno_foto = tf.data.Dataset.list_files(rutas_imagenes_entreno_foto)
+        self.logger.info("listado_dataset_entreno_foto " + str(timestamp() - inicio))
 
-    def train_pintor(self):
-        return self.dataset_train_pintor
+        inicio = timestamp()
+        listado_dataset_test_pintor = tf.data.Dataset.list_files(rutas_imagenes_test_pintor)
+        self.logger.info("listado_dataset_test_pintor " + str(timestamp() - inicio))
 
-    def train_foto(self):
-        return self.dataset_train_foto
+        inicio = timestamp()
+        listado_dataset_test_foto = tf.data.Dataset.list_files(rutas_imagenes_test_foto)
+        self.logger.info("listado_dataset_test_foto " + str(timestamp() - inicio))
 
-    def test_pintor(self):
-        return self.dataset_test_pintor
+        AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-    def test_foto(self):
-        return self.dataset_test_foto
+        inicio = timestamp()
+        imagenes_entreno_pintor = listado_dataset_entreno_pintor.map(self._preprocesar_imagen_dataset,
+                                                                     num_parallel_calls=AUTOTUNE)
+        imagenes_entreno_foto = listado_dataset_entreno_foto.map(self._preprocesar_imagen_dataset,
+                                                                 num_parallel_calls=AUTOTUNE)
+        imagenes_test_pintor = listado_dataset_test_pintor.map(self._preprocesar_imagen_dataset,
+                                                               num_parallel_calls=AUTOTUNE)
+        imagenes_test_foto = listado_dataset_test_foto.map(self._preprocesar_imagen_dataset,
+                                                           num_parallel_calls=AUTOTUNE)
+        self.logger.info("Mapeado datasets " + str(timestamp() - inicio))
 
-    def calcular_n_batches(self, is_training=True):
-        if is_training:
-            imagenes_pintor = len(self.imagenes_train_pintor)
-            imagenes_foto = len(self.imagenes_train_foto)
+        inicio = timestamp()
+        self.dataset_entreno_pintor = self.preparar_dataset(imagenes_entreno_pintor,
+                                                            cache=True,
+                                                            ruta_cache=utils.obtener_archivo_cache(
+                                                                "dataset_entreno_pintor"))
+        self.dataset_entreno_foto = self.preparar_dataset(imagenes_entreno_foto,
+                                                          cache=True,
+                                                          ruta_cache=utils.obtener_archivo_cache(
+                                                              "dataset_entreno_foto"))
+        self.dataset_test_pintor = self.preparar_dataset(imagenes_test_pintor,
+                                                         cache=True,
+                                                         ruta_cache=utils.obtener_archivo_cache("dataset_test_pintor"))
+        self.dataset_test_foto = self.preparar_dataset(imagenes_test_foto,
+                                                       cache=True,
+                                                       ruta_cache=utils.obtener_archivo_cache("dataset_test_foto"))
+        self.logger.info("Preparación datasets " + str(timestamp() - inicio))
+
+    def calcular_n_batches(self, entreno=True):
+        """Calcula los n_batches del proceso a realizar.
+        
+        Parámetros:
+            entreno: indicación si de el proceso es entrenamiento o no."""
+
+        if entreno:
+            imagenes_pintor = self.numero_imagenes_entreno_pintor
+            imagenes_foto = self.numero_imagenes_entreno_foto
         else:
-            imagenes_pintor = len(self.imagenes_test_pintor)
-            imagenes_foto = len(self.imagenes_test_foto)
+            imagenes_pintor = self.numero_imagenes_test_pintor
+            imagenes_foto = self.numero_imagenes_test_foto
 
-        instancias = min(imagenes_pintor, imagenes_foto)
+        return int(min(imagenes_pintor, imagenes_foto) / self.tamanio_batch)
 
-        return int(instancias / self.utils.obtener_tamanio_batch())
+    def cargar_batch(self, entreno=True):
+        """Generador que devuelve imágenes en formato numpy para realizar un proceso batch.
 
-    def cargar_batch(self, is_training=True):
+            Parámetros:
+                entreno: indicación de si el proceso es entrenamiento o no."""
 
-        if is_training:
-            dataset_pintor = self.dataset_train_pintor
-            dataset_foto = self.dataset_train_foto
+        if entreno:
+            dataset_pintor = self.dataset_entreno_pintor
+            dataset_foto = self.dataset_entreno_foto
         else:
             dataset_pintor = self.dataset_test_pintor
             dataset_foto = self.dataset_test_foto
 
-        n_batches = self.calcular_n_batches(is_training)
+        n_batches = self.calcular_n_batches(entreno)
 
         iter_dataset_pintor = iter(dataset_pintor)
         iter_dataset_foto = iter(dataset_foto)
 
-        self.logger.info("Vamos a sacar batches nano")
         for i in range(n_batches):
             yield next(iter_dataset_pintor).numpy(), next(iter_dataset_foto).numpy()
 
-    def obtener_imagen_muestra_pintor(self):
-        return preprocesar_imagen(self.utils.obtener_archivo_muestra_pintor(), self.utils.obtener_anchura(),
-                                  self.utils.obtener_altura(), self.utils.obtener_canales()).numpy()
-
-    def obtener_imagen_muestra_foto(self):
-        return preprocesar_imagen(self.utils.obtener_archivo_muestra_foto(), self.utils.obtener_anchura(),
-                                  self.utils.obtener_altura(), self.utils.obtener_canales()).numpy()
-
-    def preparar_dataset(self, ds, cache=True):  # Capamos a x valores?
+    def preparar_dataset(self, dataset, cache, ruta_cache=None):
+        """Prepara el dataset para ser consumido.
+        
+        Parámetros:
+            dataset: el dataset a preparar (tf.Data.Dataset)
+            
+            cache: si queremos usar o no caché.
+            
+            ruta_cache: si hemos indicado que queremos usar caché, este parámetro indica la ruta a guardar 
+            la caché si no encaja en memoria."""
         AUTOTUNE = tf.data.experimental.AUTOTUNE
-        if cache:
-            if isinstance(cache, str):
-                ds = ds.cache(cache)
+        if cache:  # verdadero si el parámetro es un string, un número distinto de 0...
+            if isinstance(ruta_cache, str):
+                dataset = dataset.cache(ruta_cache)
             else:
-                ds = ds.cache()
-        ds = ds.shuffle(buffer_size=self.utils.obtener_tamanio_buffer())
-        ds = ds.repeat()  # repeat forever
-        ds = ds.batch(self.utils.obtener_tamanio_batch())
-        ds = ds.prefetch(buffer_size=AUTOTUNE)
-        return ds
+                dataset = dataset.cache()
+        dataset = dataset.shuffle(buffer_size=self.tamanio_buffer)
+        dataset = dataset.repeat()  # repetimos continuamente
+        dataset = dataset.batch(self.tamanio_batch)
+        dataset = dataset.prefetch(buffer_size=AUTOTUNE)
+        return dataset
 
-    def _preprocesar_imagen_train(self, ruta):
-        return leer_y_normalizar_imagen(ruta, self.utils.obtener_anchura(), self.utils.obtener_altura(),
-                                        self.utils.obtener_canales(), train=True)
+    def _preprocesar_imagen_dataset(self, ruta):
+        """Recubridor para llamar a la función procesar imagen desde la función map.
 
-    def _preprocesar_imagen_test(self, ruta):
-        return leer_y_normalizar_imagen(ruta, self.utils.obtener_anchura(), self.utils.obtener_altura(),
-                                        self.utils.obtener_canales(), train=False)
+        Parámetros:
+            ruta: ruta en disco de la imagen"""
+        return procesado_imagenes.preprocesar_imagen(ruta, self.dimensiones)

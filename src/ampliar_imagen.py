@@ -1,45 +1,47 @@
 import base64
-import imghdr
 
+import procesado_imagenes
 import requests
-import tensorflow as tf
-from PIL import Image
-import io
-import numpy as np
-import procesado_imagenes  # TODO quitar esto
 
 
-def comprueba_imagen(string_base64):
-    """Comprueba si la imagen es válida y devuelve el tipo correspondiente"""
-    try:
-        resultado = imghdr.what("ac", h=base64.b64decode(str(string_base64)))
-    except:
-        resultado = None
-    return resultado
+def _ampliar(imagen, extension, factor_aumento): #TODO comprobar bug factor_aumento = 1
+    imagen_int = procesado_imagenes.float_array_a_int_array(imagen)
+    return procesado_imagenes.numpy_array_a_imagen_PIL_bytes(
+        procesado_imagenes.aumentar_resolucion(imagen_int, factor=factor_aumento), extension)
 
-def ampliar(imagen,extension, url_api):
-    # preprocesamos la imagen
-    imagen_formato_PIL = procesado_imagenes.numpy_array_a_imagen(imagen)
 
-    imagen_base64 = procesado_imagenes.imagen_a_base64_string(imagen_formato_PIL)
-    imagen_base64 = str(imagen_base64, 'utf-8')
-    # creamos la peticion
-    payload = {"imagen": imagen_base64}
-    try:
-        resultado_peticion = requests.post(url_api, json=payload)
-        # if resultado_peticion.ok:
-        resultado_peticion = resultado_peticion.json()
-        imagen_redimensionada_bytes = base64.b64decode(resultado_peticion["imagen_ampliada"])
-    except:
-        # TODO comprobar si es un tensor o un array de numpy lo que entra y variar en consecuencia shape
-        # TODO ver si la api devuelve los bytes de una PIL imagen o no
-        imagen = imagen.squeeze(axis=0)
-        imagen_redimensionada = tf.image.resize(imagen, [4 * imagen.shape[0], 4 * imagen.shape[1]],
-                                                method=tf.image.ResizeMethod.BICUBIC)
-        imagen_redimensionada = imagen_redimensionada.numpy()
-        imagen_redimensionada = (imagen_redimensionada.clip(0, 255)).astype(np.uint8)
-        imagen_redimensionada_PIL = Image.fromarray(imagen_redimensionada)
-        imagen_redimensionada_bytes = io.BytesIO()
-        imagen_redimensionada_PIL.save(imagen_redimensionada_bytes, format=extension.upper())  # TODO meter aqui la extension de la imagen
-        imagen_redimensionada_bytes = imagen_redimensionada_bytes.getvalue()
-    return imagen_redimensionada_bytes
+def ampliar(imagen, extension, factor_aumento, url_api=None):
+    """Amplia una imagen. Según el valor de url_api, la amplia con la API de EnhanceNet o devuelve la imagen ampliada
+    con el algoritmo de ampliación bicúbica. También se amplia con el algoritmo bicúbico si no es posible acceder a la
+    API o se presenta alguna excepción en el intento.
+
+    Parámetros:
+        Imagen: imagen en formato array de numpy con valores entre 0 y 1.
+
+        Extensión: la extensión de la imagen anterior.
+
+        Factor aumento: La proporción para aumentar la resolución de la imagen. Si se llama a la API de EnhanceNet,
+        este factor es ignorado.
+
+        Url_api: a qué url tenemos que realizar la petición de usarse la API. Si es None, no se utiliza la API.
+        """
+    if url_api is None:
+        return _ampliar(imagen, extension, factor_aumento)
+    else:
+        # preprocesamos la imagen
+        imagen_formato_PIL = procesado_imagenes.numpy_array_normalizado_a_imagen(imagen)
+
+        imagen_base64 = procesado_imagenes.imagen_a_base64_string(imagen_formato_PIL)
+        imagen_base64 = str(imagen_base64, 'utf-8')
+        # creamos la peticion
+        payload = {"imagen": imagen_base64}
+
+        try:
+            # intentamos redimensionar con la api y si hay errores en el intento realizamos el metodo bicubico
+            resultado_peticion = requests.post(url_api, json=payload)
+            resultado_peticion = resultado_peticion.json()
+            imagen_redimensionada_bytes = base64.b64decode(resultado_peticion["imagen_ampliada"])
+        except:
+            return _ampliar(imagen, extension, factor_aumento)
+
+        return imagen_redimensionada_bytes
