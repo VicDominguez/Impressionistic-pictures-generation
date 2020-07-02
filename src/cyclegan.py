@@ -220,7 +220,8 @@ class CycleGAN:
 
     def train(self, lector_imagenes):
 
-        writer_train = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_train())
+        sumario_entreno = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_entreno())
+        sumario_test = tf.summary.create_file_writer(self.utils.obtener_ruta_logs_test())
 
         imagen_muestra_pintor = preprocesar_imagen_individual(self.utils.obtener_archivo_muestra_pintor(),
                                                               self.dimensiones).numpy()
@@ -231,15 +232,23 @@ class CycleGAN:
         umbral_verdad = np.ones((1,) + self.disc_patch)
         umbral_falso = np.zeros((1,) + self.disc_patch)
 
-        numero_batches = lector_imagenes.calcular_n_batches()
+        numero_batches_entreno = lector_imagenes.calcular_n_batches(entreno=True)
+        numero_batches_test = lector_imagenes.calcular_n_batches(entreno=False)
 
         # Inicializamos los arrays que contendrán los errores
-        error_discriminadores = np.ones(numero_batches)
-        precision_discriminadores = np.ones(numero_batches)
-        error_generadores = np.ones(numero_batches)
-        validez_generadores = np.ones(numero_batches)
-        error_reconstruccion_generadores = np.ones(numero_batches)
-        error_identidad_generadores = np.ones(numero_batches)
+        error_discriminadores_entreno = np.ones(numero_batches_entreno)
+        precision_discriminadores_entreno = np.ones(numero_batches_entreno)
+        error_generadores_entreno = np.ones(numero_batches_entreno)
+        validez_generadores_entreno = np.ones(numero_batches_entreno)
+        error_reconstruccion_generadores_entreno = np.ones(numero_batches_entreno)
+        error_identidad_generadores_entreno = np.ones(numero_batches_entreno)
+        
+        error_discriminadores_test = np.ones(numero_batches_test)
+        precision_discriminadores_test = np.ones(numero_batches_test)
+        error_generadores_test = np.ones(numero_batches_test)
+        validez_generadores_test = np.ones(numero_batches_test)
+        error_reconstruccion_generadores_test = np.ones(numero_batches_test)
+        error_identidad_generadores_test = np.ones(numero_batches_test)
 
         hay_gsutil = gsutil_disponible()  # Booleano para saber si tenemos que escribir o no en gcp
 
@@ -253,24 +262,42 @@ class CycleGAN:
 
             comienzo_epoch = timestamp()
             self.logger.info("epoch " + str(epoch))
-
-            for indice, (imagenes_pintor, imagenes_foto) in enumerate(lector_imagenes.cargar_batch()):
+            
+            #paso de entreno
+            for indice, (imagenes_pintor, imagenes_foto) in enumerate(lector_imagenes.cargar_batch(entreno=True)):
                 error_discriminadores_actual = self._entrenar_discriminadores(imagenes_pintor, imagenes_foto,
                                                                               umbral_verdad, umbral_falso)
                 error_generadores_actual = self._entrenar_generadores(imagenes_pintor, imagenes_foto, umbral_verdad)
 
-                error_discriminadores[indice] = error_discriminadores_actual[0]
-                precision_discriminadores[indice] = 100 * error_discriminadores_actual[1]
-                error_generadores[indice] = error_generadores_actual[0]
-                validez_generadores[indice] = np.mean(error_generadores_actual[1:3])
-                error_reconstruccion_generadores[indice] = np.mean(error_generadores_actual[3:5])
-                error_identidad_generadores[indice] = np.mean(error_generadores_actual[5:6])
+                error_discriminadores_entreno[indice] = error_discriminadores_actual[0]
+                precision_discriminadores_entreno[indice] = 100 * error_discriminadores_actual[1]
+                error_generadores_entreno[indice] = error_generadores_actual[0]
+                validez_generadores_entreno[indice] = np.mean(error_generadores_actual[1:3])
+                error_reconstruccion_generadores_entreno[indice] = np.mean(error_generadores_actual[3:5])
+                error_identidad_generadores_entreno[indice] = np.mean(error_generadores_actual[5:6])
+            
+            # paso test
+            for indice, (imagenes_pintor, imagenes_foto) in enumerate(lector_imagenes.cargar_batch(entreno=False)):
+                error_discriminadores_actual = self._entrenar_discriminadores(imagenes_pintor, imagenes_foto,
+                                                                              umbral_verdad, umbral_falso)
+                error_generadores_actual = self._entrenar_generadores(imagenes_pintor, imagenes_foto, umbral_verdad)
 
-            # TODO test
-
-            self._escribir_metricas_escalares(error_discriminadores, precision_discriminadores, error_generadores,
-                                              validez_generadores, error_reconstruccion_generadores,
-                                              error_identidad_generadores, writer_train, epoch)
+                error_discriminadores_test[indice] = error_discriminadores_actual[0]
+                precision_discriminadores_test[indice] = 100 * error_discriminadores_actual[1]
+                error_generadores_test[indice] = error_generadores_actual[0]
+                validez_generadores_test[indice] = np.mean(error_generadores_actual[1:3])
+                error_reconstruccion_generadores_test[indice] = np.mean(error_generadores_actual[3:5])
+                error_identidad_generadores_test[indice] = np.mean(error_generadores_actual[5:6])
+            
+            self._escribir_metricas_escalares(error_discriminadores_entreno, precision_discriminadores_entreno, 
+                                              error_generadores_entreno, validez_generadores_entreno, 
+                                              error_reconstruccion_generadores_entreno, 
+                                              error_identidad_generadores_entreno, sumario_entreno, epoch)
+            
+            self._escribir_metricas_escalares(error_discriminadores_test, precision_discriminadores_test,
+                                              error_generadores_test, validez_generadores_test,
+                                              error_reconstruccion_generadores_test,
+                                              error_identidad_generadores_test, sumario_test, epoch)
 
             self._imagen_muestra(imagen_muestra_pintor, imagen_muestra_foto, epoch)
             self._guardar_progreso(epoch)
@@ -347,8 +374,38 @@ class CycleGAN:
         return 0.5 * np.add(error_discriminador_pintor, error_discriminador_foto)
 
     @tf.function
+    def _test_discriminadores(self, imagenes_pintor, imagenes_foto, umbral_verdad, umbral_falso):
+
+        # Traducir imagenes
+        falsificacion_foto = self.generador_foto.predict(imagenes_pintor)
+        falsificacion_pintor = self.generador_pintor.predict(imagenes_foto)
+
+        # TEntrenamos los discriminadores
+        error_discriminador_pintor_real = self.discriminador_pintor.test_on_batch(imagenes_pintor, umbral_verdad)
+        error_discriminador_pintor_falsificacion = self.discriminador_pintor.test_on_batch(
+            falsificacion_pintor, umbral_falso)
+        error_discriminador_foto_real = self.discriminador_foto.test_on_batch(imagenes_foto, umbral_verdad)
+        error_discriminador_foto_falsificacion = self.discriminador_foto.test_on_batch(falsificacion_foto,
+                                                                                        umbral_falso)
+        # Metricas
+        error_discriminador_pintor = 0.5 * np.add(error_discriminador_pintor_real,
+                                                  error_discriminador_pintor_falsificacion)
+        error_discriminador_foto = 0.5 * np.add(error_discriminador_foto_real,
+                                                error_discriminador_foto_falsificacion)
+
+        # Error total discriminador
+        return 0.5 * np.add(error_discriminador_pintor, error_discriminador_foto)
+
+    @tf.function
     def _entrenar_generadores(self, imagenes_pintor, imagenes_foto, umbral_verdad):
         return self.modelo_combinado.train_on_batch([imagenes_pintor, imagenes_foto],
+                                                    [umbral_verdad, umbral_verdad,
+                                                     imagenes_pintor, imagenes_foto,
+                                                     imagenes_pintor, imagenes_foto])
+
+    @tf.function
+    def _test_generadores(self, imagenes_pintor, imagenes_foto, umbral_verdad):
+        return self.modelo_combinado.test_on_batch([imagenes_pintor, imagenes_foto],
                                                     [umbral_verdad, umbral_verdad,
                                                      imagenes_pintor, imagenes_foto,
                                                      imagenes_pintor, imagenes_foto])
