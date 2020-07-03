@@ -55,14 +55,14 @@ def obtener_nombre_relativo_desde_string(archivo):
 class Utilidades(metaclass=Singleton):
     __slots__ = ["_version", "_dataset", "_ruta_logs", "_ruta_modelos", "_ruta_raiz_dataset", "_ruta_tfcache",
                  "_ruta_logs_entreno", "_ruta_logs_test", "_ruta_modelo_modelos", "_ruta_modelo_configuracion",
-                 "_ruta_modelo_imagenes", "_archivo_dataset", "_ruta_dataset", "_ruta_dataset_entreno_pintor",
+                 "_archivo_dataset", "_ruta_dataset", "_ruta_dataset_entreno_pintor", "_ruta_logs_raiz",
                  "_ruta_dataset_entreno_foto", "_ruta_dataset_test_pintor", "_ruta_dataset_test_foto", "_ruta_cache",
                  "_tasa_aprendizaje", "_lambda_reconstruccion", "_lambda_validacion", "_lambda_identidad",
                  "_dimensiones", "_epochs", "_tamanio_buffer", "_tamanio_batch", "_filtros_generador",
                  "_filtros_discriminador", "_url_datasets", "_url_api_aumento", "_gcp_bucket", "_imagen_pintor_muestra",
                  "_imagen_foto_muestra", "_ruta_archivo_muestra_pintor", "_ruta_archivo_muestra_foto", "_mascara_logs",
                  "_logger", "_modelo_combinado", "_discriminador_pintor", "_discriminador_foto", "_generador_pintor",
-                 "_generador_foto", "_ruta_logs_raiz"]
+                 "_generador_foto"]
 
     def __init__(self, version, dataset, archivo_configuracion):
         self._version = str(version)
@@ -86,7 +86,6 @@ class Utilidades(metaclass=Singleton):
 
         self._ruta_modelo_modelos = self._ruta_modelos / "modelo"
         self._ruta_modelo_configuracion = self._ruta_modelos / "config"
-        self._ruta_modelo_imagenes = self._ruta_modelos / "imagenes"
 
         self._archivo_dataset = self._dataset + ".zip"
         self._ruta_dataset = self._ruta_raiz_dataset / self._dataset
@@ -150,7 +149,6 @@ class Utilidades(metaclass=Singleton):
         self._ruta_modelos.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_configuracion.mkdir(parents=True, exist_ok=True)
         self._ruta_modelo_modelos.mkdir(parents=True, exist_ok=True)
-        self._ruta_modelo_imagenes.mkdir(parents=True, exist_ok=True)
         if self._ruta_tfcache.exists():  # TODO probar esto en detalle
             shutil.rmtree(_ruta_a_string(self._ruta_tfcache), ignore_errors=False, onerror=None)
         self._ruta_cache.mkdir(parents=True, exist_ok=True)
@@ -224,9 +222,6 @@ class Utilidades(metaclass=Singleton):
 
     def obtener_archivo_cache(self, nombre):
         return _ruta_a_string(self._ruta_cache / (nombre + ".tfcache"))
-
-    def obtener_archivo_imagen_a_guardar(self, nombre):
-        return _ruta_a_string(self._ruta_modelo_imagenes / (str(nombre) + ".png"))
 
     def obtener_ruta_archivo_modelo_parametros(self):
         return _ruta_a_string(self._ruta_modelo_configuracion / "parametros.pkl")
