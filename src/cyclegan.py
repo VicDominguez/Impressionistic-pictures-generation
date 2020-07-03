@@ -166,7 +166,7 @@ class CycleGAN:
         self.logger = self.utils.obtener_logger("cyclegan")
         self.dimensiones = self.utils.obtener_dimensiones()
 
-        if restaurar:
+        if restaurar and self.utils.existen_ficheros_modelo():
             self.logger.info("Cargando modelo")
             self.discriminador_pintor = load_model(self.utils.obtener_ruta_fichero_discriminador_pintor(),
                                                    custom_objects={'InstanceNormalization': InstanceNormalization})
@@ -236,7 +236,7 @@ class CycleGAN:
 
             self.discriminador_pintor.trainable = True
             self.discriminador_foto.trainable = True
-            #cargamos los ultimos pesos, si hay
+            # cargamos los ultimos pesos, si hay
             self.cargar_ultimos_pesos()
 
     def train(self, lector_imagenes):
@@ -323,7 +323,7 @@ class CycleGAN:
             self._imagen_muestra(imagen_muestra_pintor, imagen_muestra_foto, epoch)
             fin_epoch = timestamp()
 
-            if epoch % 5 == 0:
+            if epoch + 1 % 5 == 0:
                 self._guardar_progreso(epoch)
 
             self.logger.info("epoch " + str(epoch) + " completado en " + str(fin_epoch - comienzo_epoch))
@@ -372,7 +372,6 @@ class CycleGAN:
                               reconstruccion_pintor, reconstruccion_foto,
                               imagen_pintor_identidad, imagen_foto_identidad])
 
-    @tf.function
     def _entrenar_discriminadores(self, imagenes_pintor, imagenes_foto, umbral_verdad, umbral_falso):
 
         # Traducir imagenes
@@ -395,7 +394,6 @@ class CycleGAN:
         # Error total discriminador
         return 0.5 * np.add(error_discriminador_pintor, error_discriminador_foto)
 
-    @tf.function
     def _test_discriminadores(self, imagenes_pintor, imagenes_foto, umbral_verdad, umbral_falso):
 
         # Traducir imagenes
@@ -418,14 +416,12 @@ class CycleGAN:
         # Error total discriminador
         return 0.5 * np.add(error_discriminador_pintor, error_discriminador_foto)
 
-    @tf.function
     def _entrenar_generadores(self, imagenes_pintor, imagenes_foto, umbral_verdad):
         return self.modelo_combinado.train_on_batch([imagenes_pintor, imagenes_foto],
                                                     [umbral_verdad, umbral_verdad,
                                                      imagenes_pintor, imagenes_foto,
                                                      imagenes_pintor, imagenes_foto])
 
-    @tf.function
     def _test_generadores(self, imagenes_pintor, imagenes_foto, umbral_verdad):
         return self.modelo_combinado.test_on_batch([imagenes_pintor, imagenes_foto],
                                                    [umbral_verdad, umbral_verdad,
@@ -453,7 +449,7 @@ class CycleGAN:
             [imagen_pintor, estimacion_foto, pintor_reconstruido, imagen_foto, estimacion_pintor, foto_reconstruida])
 
         # Rescale images 0 - 1
-        imagenes = 0.5 * imagenes + 0.5
+        #imagenes = 0.5 * imagenes + 0.5
 
         titles = ['Original', 'Traducida', 'Reconstruida']
         figura, ejes = plt.subplots(filas, columnas)
@@ -508,15 +504,15 @@ class CycleGAN:
         with open(self.utils.obtener_ruta_archivo_modelo_objeto(), "wb") as archivo:
             pkl.dump(self, archivo)
 
-    def cargar_ultimos_pesos(self):  # TODO Comprobar
+    def cargar_ultimos_pesos(self):
         self.logger.info("Cargamos los pesos más recientes")
         ruta_ultimo_checkpoint, self.epoch_actual = self.utils.obtener_ultimos_pesos()
-        self.logger.info("Los ultimos pesos eran del epoch :" + str(self.epoch_actual))
+        self.logger.info("Los ultimos pesos eran del epoch: " + str(self.epoch_actual))
         if ruta_ultimo_checkpoint is not None:
             self.modelo_combinado.load_weights(ruta_ultimo_checkpoint)
 
     def _guardar_progreso(self, epoch):
-        self.modelo_combinado.save_weights(self.utils.obtener_ruta_fichero_modelo_por_epoch(epoch+1))
+        self.modelo_combinado.save_weights(self.utils.obtener_ruta_fichero_modelo_por_epoch(epoch + 1))
 
     @staticmethod
     def _escribir_metricas_escalares(error_discriminadores, precision_discriminadores, error_generadores,

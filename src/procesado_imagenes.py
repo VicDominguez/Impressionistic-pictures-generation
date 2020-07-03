@@ -94,7 +94,7 @@ def preprocesar_imagen(ruta, dimensiones):
     imagen = tf.image.decode_jpeg(imagen, channels=dimensiones[2])
     # Tenemos que cortar la imagen. Desgraciadamente no se puede mantener el ratio del aspecto
     imagen = tf.image.resize(imagen, size=dimensiones[0:2], method=tf.image.ResizeMethod.AREA)
-    return tf.image.convert_image_dtype(imagen, tf.float32)
+    return tf.image.convert_image_dtype(imagen / 255, tf.float32)
 
 
 def preprocesar_imagen_individual(ruta, dimensiones):

@@ -40,7 +40,7 @@ if __name__ == "__main__":
     logger.info("Dataset en linea")
 
     logger.info("Creacion de la red neuronal")
-    gan = CycleGAN(args["arquitectura"])
+    gan = CycleGAN(restaurar=False, tipo_generador=args["arquitectura"])
     logger.info("Red neuronal lista")
 
     logger.info("Iniciando el lector de imágenes")

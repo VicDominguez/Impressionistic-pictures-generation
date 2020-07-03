@@ -61,7 +61,8 @@ class Utilidades(metaclass=Singleton):
                  "_dimensiones", "_epochs", "_tamanio_buffer", "_tamanio_batch", "_filtros_generador",
                  "_filtros_discriminador", "_url_datasets", "_url_api_aumento", "_gcp_bucket", "_imagen_pintor_muestra",
                  "_imagen_foto_muestra", "_ruta_archivo_muestra_pintor", "_ruta_archivo_muestra_foto", "_mascara_logs",
-                 "_logger"]
+                 "_logger", "_modelo_combinado", "_discriminador_pintor", "_discriminador_foto", "_generador_pintor",
+                 "_generador_foto", "_ruta_logs_raiz"]
 
     def __init__(self, version, dataset, archivo_configuracion):
         self._version = str(version)
@@ -74,7 +75,8 @@ class Utilidades(metaclass=Singleton):
             datos_json = json.load(archivo)
 
         # Configuramos el resto de parámetros
-        self._ruta_logs = pathlib.Path("../logs", self._dataset, self._version)
+        self._ruta_logs_raiz = pathlib.Path("../logs")
+        self._ruta_logs = self._ruta_logs_raiz / self._dataset / self._version
         self._ruta_modelos = pathlib.Path("../modelos", self._dataset, self._version)
         self._ruta_raiz_dataset = pathlib.Path("../datasets")
         self._ruta_tfcache = pathlib.Path("../tfcache")
@@ -111,6 +113,12 @@ class Utilidades(metaclass=Singleton):
         self._tamanio_batch = int(datos_json["configuracion_modelo"]["tamanio_batch"])
         self._filtros_generador = int(datos_json["configuracion_modelo"]["filtros_generador"])
         self._filtros_discriminador = int(datos_json["configuracion_modelo"]["filtros_discriminador"])
+
+        self._modelo_combinado = self._ruta_modelo_modelos / "modelo_combinado.h5"
+        self._discriminador_pintor = self._ruta_modelo_modelos / "discriminador_pintor.h5"
+        self._discriminador_foto = self._ruta_modelo_modelos / "discriminador_foto.h5"
+        self._generador_pintor = self._ruta_modelo_modelos / "generador_pintor.h5"
+        self._generador_foto = self._ruta_modelo_modelos / "generador_foto.h5"
 
         self._url_datasets = datos_json["url"]["datasets"] + self._archivo_dataset
         self._url_api_aumento = datos_json["url"]["api_aumento"]
@@ -164,7 +172,7 @@ class Utilidades(metaclass=Singleton):
 
     def copiar_logs_gcp(self):
         """Ejecuta el proceso de copiar los logs al bucket de gcp."""
-        subprocess.run(["gsutil", "cp", "-r", self.obtener_ruta_logs(), self._gcp_bucket])
+        subprocess.run(["gsutil", "cp", "-r", self._ruta_logs_raiz, self._gcp_bucket])
 
     def obtener_logger(self, nombre):
         """Devuelve un logger que escribe tanto en fichero como en la salida estándar.
@@ -242,7 +250,7 @@ class Utilidades(metaclass=Singleton):
         return _ruta_a_string(self._ruta_modelo_configuracion / "generador_foto.png")
 
     def obtener_ultimos_pesos(self):
-        lista_pesos = list(pathlib.Path(self._ruta_modelo_modelos).rglob("pesos*.h5"))  # obtenemos la lista de pesos
+        lista_pesos = list(pathlib.Path(self._ruta_modelo_modelos).rglob("pesos-*.h5"))  # obtenemos la lista de pesos
         if lista_pesos:
             maximo = max(list(map(lambda x: int(str(x).split("-")[-1].split(".")[0]), lista_pesos)))
             # procesamos (si hay) el nombre de fichero:
@@ -252,20 +260,25 @@ class Utilidades(metaclass=Singleton):
         else:
             return None, 0
 
+    def existen_ficheros_modelo(self):
+        return self._modelo_combinado.exists() and self._discriminador_pintor.exists() \
+               and self._discriminador_foto.exists() and self._generador_pintor.exists() \
+               and self._generador_foto.exists()
+
     def obtener_ruta_fichero_modelo(self):
-        return _ruta_a_string(self._ruta_modelo_modelos / "modelo_combinado.h5")
+        return _ruta_a_string(self._modelo_combinado)
 
     def obtener_ruta_fichero_discriminador_pintor(self):
-        return _ruta_a_string(self._ruta_modelo_modelos / "discriminador_pintor.h5")
+        return _ruta_a_string(self._discriminador_pintor)
 
     def obtener_ruta_fichero_discriminador_foto(self):
-        return _ruta_a_string(self._ruta_modelo_modelos / "discriminador_foto.h5")
+        return _ruta_a_string(self._discriminador_foto)
 
     def obtener_ruta_fichero_generador_pintor(self):
-        return _ruta_a_string(self._ruta_modelo_modelos / "generador_pintor.h5")
+        return _ruta_a_string(self._generador_pintor)
 
     def obtener_ruta_fichero_generador_foto(self):
-        return _ruta_a_string(self._ruta_modelo_modelos / "generador_foto.h5")
+        return _ruta_a_string(self._generador_foto)
 
     def obtener_ruta_fichero_modelo_por_epoch(self, epoch):
         return _ruta_a_string(self._ruta_modelo_modelos / ("pesos-" + str(epoch) + ".h5"))
