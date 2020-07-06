@@ -170,7 +170,7 @@ class Utilidades(metaclass=Singleton):
 
     def copiar_logs_gcp(self):
         """Ejecuta el proceso de copiar los logs al bucket de gcp."""
-        subprocess.run(["gsutil", "cp", "-r", self._ruta_logs_raiz, self._gcp_bucket])
+        subprocess.run(["gsutil", "-m", "rsync", "-r", self._ruta_logs_raiz, self._gcp_bucket])
 
     def obtener_logger(self, nombre):
         """Devuelve un logger que escribe tanto en fichero como en la salida estándar.
@@ -253,7 +253,7 @@ class Utilidades(metaclass=Singleton):
             # el numero de epoch. Obtenemos el maximo
             return _ruta_a_string(self._ruta_modelo_modelos / ("pesos-" + str(maximo) + ".h5")), maximo
         else:
-            return None, 0
+            return None, 1
 
     def existen_ficheros_modelo(self):
         return self._modelo_combinado.exists() and self._discriminador_pintor.exists() \

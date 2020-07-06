@@ -62,7 +62,7 @@ if __name__ == "__main__":
         logger.info("Procesando " + salida.parts[-1])
         if salida.exists():
             continue
-        imagen_cruda = gan.convertir_imagen(str(entrada), "pintor", 4)
+        imagen_cruda = gan.convertir_imagen(str(entrada), "pintor", 8)
         with open(salida, "wb") as archivo:
             archivo.write(imagen_cruda)
 

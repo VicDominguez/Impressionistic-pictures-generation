@@ -65,7 +65,7 @@ class CycleGAN:
             u3 = upsample(u2, d1, self.filtros_generador)
 
             u4 = UpSampling2D(size=2)(u3)
-            salida_img = Conv2D(self.canales, kernel_size=4, strides=1, padding='same', activation='tanh')(u4)
+            salida_img = Conv2D(self.dimensiones[2], kernel_size=4, strides=1, padding='same', activation='tanh')(u4)
 
             return Model(img, salida_img)
 
@@ -193,7 +193,7 @@ class CycleGAN:
             self.lambda_identidad = self.utils.obtener_lambda_identidad()
             self.filtros_generador = self.utils.obtener_filtros_generador()
             self.filtros_discriminador = self.utils.obtener_filtros_discriminador()
-            self.epoch_actual = 0
+            self.epoch_actual = 1
 
             # Calculate salida shape of D (PatchGAN) #TODO revisar esto
             patch = int(self.dimensiones[1] / 2 ** 3)
@@ -276,7 +276,7 @@ class CycleGAN:
         # Comenzamos
         comienzo_entrenamiento = timestamp()
 
-        for epoch in range(self.epoch_actual, self.utils.obtener_epochs()):
+        for epoch in range(self.epoch_actual, self.utils.obtener_epochs() + 1):
 
             if hay_gsutil:
                 self.utils.copiar_logs_gcp()
@@ -323,10 +323,11 @@ class CycleGAN:
             self._imagen_muestra(imagen_muestra_pintor, imagen_muestra_foto, epoch)
             fin_epoch = timestamp()
 
-            if epoch + 1 % 5 == 0:
-                self._guardar_progreso(epoch)
-
             self.logger.info("epoch " + str(epoch) + " completado en " + str(fin_epoch - comienzo_epoch))
+
+            if epoch % 5 == 0:
+                self.logger.info("Guardando progreso")
+                self._guardar_progreso(epoch)
 
             self.epoch_actual += 1
 
@@ -512,7 +513,7 @@ class CycleGAN:
             self.modelo_combinado.load_weights(ruta_ultimo_checkpoint)
 
     def _guardar_progreso(self, epoch):
-        self.modelo_combinado.save_weights(self.utils.obtener_ruta_fichero_modelo_por_epoch(epoch + 1))
+        self.modelo_combinado.save_weights(self.utils.obtener_ruta_fichero_modelo_por_epoch(epoch))
 
     @staticmethod
     def _escribir_metricas_escalares(error_discriminadores, precision_discriminadores, error_generadores,
