@@ -9,7 +9,8 @@ if __name__ == "__main__":
     # Leemos los argumentos
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--version",
-                        help="Especifica el nombre de la versión con la que se guardarán los archivos",
+                        help="Especifica el nombre de la versión "
+                             "con la que se guardarán los archivos",
                         type=str,
                         default="version_por_defecto")
     parser.add_argument("-d", "--dataset",
@@ -17,7 +18,8 @@ if __name__ == "__main__":
                         type=str,
                         default="monet2photo")
     parser.add_argument("-c", "--configuracion",
-                        help="Especifica el fichero de configuración que se va a usar",
+                        help="Especifica el fichero "
+                             "de configuración que se va a usar",
                         type=str,
                         default="configuracion_128.json")
     parser.add_argument("-a", "--arquitectura",
@@ -27,10 +29,9 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     # Comprobamos que los parámetros son válidos
-    assert pathlib.Path("../configuracion", args["configuracion"]).exists(), "El archivo no existe"
-    assert args["dataset"] in ["monet2photo", "cezanne2photo", "ukiyoe2photo", "vangogh2photo"], \
-        "El dataset no es valido"
-    assert args["arquitectura"] in ["resnet", "unet"], "El dataset no es valido"
+    assert pathlib.Path("../configuracion", args["configuracion"]).exists(), \
+        "El archivo de configuración no existe"
+    assert args["arquitectura"] in ["resnet", "unet"], "La arquitectura no es valida"
 
     utils = Utilidades(args["version"], args["dataset"], args["configuracion"])
 
