@@ -1,0 +1,75 @@
+\documentclass[./main.tex]{subfiles}
+
+\begin{document}
+\section{Sistema principal}
+\label{anexo:sistema_principal}
+
+El código de toda esta sección, además de en el presente anexo, está disponible en el GitHub personal del autor (VicDominguez),
+bajo el repositorio \textit{TFG-Computadores-Principal}, 
+accesible en la url \url{https://github.com/VicDominguez/TFG-Computadores-Principal}. \newline
+
+Ahí se pueden encontrar además los pesos de los modelos entrenados utilizados en este documento.
+
+\subsection{ampliar\textunderscore imagen.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/ampliar_imagen.py}
+
+\subsection{capas\textunderscore extra.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/capas_extra.py}
+
+\subsection{cargador\textunderscore imagenes.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/cargador_imagenes.py}
+
+\subsection{cyclegan.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/cyclegan.py}
+
+\subsection{lanzadera\textunderscore entreno.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/lanzadera_entreno.py}
+
+\subsection{lanzadera\textunderscore produccion.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/lanzadera_produccion.py}
+
+\subsection{procesado\textunderscore imagenes.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/procesado_imagenes.py}
+
+\subsection{singleton.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/singleton.py}
+
+\subsection{utilidades.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/utilidades.py}
+
+\subsection{requirements.txt}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/principal/requirements.txt}
+
+\newpage
+
+\section{Archivos de configuración del sistema principal}
+\label{anexo:archivos_configuracion}
+\subsection{configuracion\textunderscore 128.json}
+\inputminted[fontsize=\footnotesize]{json}{./codigo/configuracion/configuracion_128.json}
+\subsection{configuracion\textunderscore 256.json}
+\inputminted[fontsize=\footnotesize]{json}{./codigo/configuracion/configuracion_256.json}
+\subsection{configuracion\textunderscore 512.json}
+\inputminted[fontsize=\footnotesize]{json}{./codigo/configuracion/configuracion_512.json}
+\newpage
+
+\section{Sistema ampliador}
+\label{anexo:sistema_ampliador}
+Al igual que el sistema principal, el código está disponible bajo el repositorio \textit{EnhanceNet-TFG}, 
+accesible en la url \url{https://github.com/VicDominguez/TFG-Computadores-Principal}. \newline
+
+Ahí se pueden encontrar además los pesos del modelo utilizado en este documento.
+
+\subsection{controlador\textunderscore modelo.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/ampliador/controlador_modelo.py}
+\subsection{modelo.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/ampliador/modelo.py}
+\subsection{principal.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/ampliador/principal.py}
+\subsection{procesado.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/ampliador/procesado.py}
+\subsection{utils.py}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/ampliador/utils.py}
+\subsection{requirements.txt}
+\inputminted[fontsize=\footnotesize]{python}{./codigo/ampliador/requirements.txt}
+
+\end{document}

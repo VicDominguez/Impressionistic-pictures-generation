@@ -1,0 +1,85 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+\section{Conclusiones}
+
+En primer lugar, podemos ver que la Inteligencia Artificial carece actualmente de la creatividad de los seres humanos, al no realizar transformaciones radicales de los objetos de las imágenes. En el capítulo anterior hemos podido ver que el modelo, especialmente en los cuadros que genera de Monet, básicamente realiza un filtro de color (ver figuras \ref{fig:monet_cuadro_edificaciones_agua} y \ref{fig:monet_cuadro_puente_madera}). Dicho filtro de colores consiste básicamente en las paletas de colores propias de los autores: en Monet es azulada, mientras que en Cézanne es rojiza y en Van Gogh amarillenta chillona. \newline
+
+También podemos ver que el modelo aprende de forma ciertamente irregular según el pintor: a diferencia de Monet, en el caso de Cézanne vemos como el sistema es capaz de modificar texturas (ver ilustraciones \ref{fig:cezanne_cuadro_dataset_desierto}, \ref{fig:cezanne_cuadro_selfie_playa} y \ref{fig:cezanne_cuadro_arco_bcn}) y formas de árboles (apreciable en las figuras \ref{fig:cezanne_cuadro_parque_madrid} y \ref{fig:cezanne_cuadro_puerto_honduras}). Por otra parte, en el caso de Van Gogh, es muy notable el aprendizaje del modelo de sus pinceladas bruscas: se puede ver con muchísima claridad en el cielo de la figura \ref{fig:vangogh_cuadro_chamartin}, en los árboles de la ilustración \ref{fig:vangogh_cuadro_hervas} y en el asfalto de la carretera de \ref{fig:vangogh_cuadro_pantano_gabriel}. \newline
+
+No obstante, no es todo oro lo que reluce. La implementación ha cometido un error (que el autor no ha sido capaz de detectar su causa y solucionarlo) de iluminación, lo que provoca que las partes más brillantes de las transformaciones tengan unas manchas blancas y/o rojizas, las cuales son bastante molestas. \newline
+
+Asimismo, puede verse que en las transformaciones de cuadro a foto hay gran cantidad de problemas gráficos, con texturas ciertamente antinaturales, salvo en Monet. En los cambios de cuadro a foto de este último vemos que ayuda su estilo de pintura al aire libre, con texturas suaves que el modelo es capaz de adaptar con relativa eficacia al dominio del mundo real. Esto provoca que tengamos resultads ciertamente creíbles, como puede ser la figura \ref{fig:monet_foto_Argenteuil}. \newline
+
+Podemos concluir que el modelo tiene cierto éxito para emular a los pintores, pero aún le queda mucho recorrido para resultar creíble para un ojo humano. De alguna manera el modelo se muestra empeñado en forzar la textura del óleo sobre lienzo, resultando en efectos visuales bastante extraños en ocasiones (ver parte izquierda de la figura \ref{fig:vangogh_cuadro_pantano_gabriel}). \newline
+
+No obstante, debido a los enormes avances de las redes GAN de los últimos años, cabe la posibilidad de que un nuevo modelo o mejorando el aquí implementado puedan corregirse los errores visuales.
+
+\newpage
+
+\section{Impacto social y medioambiental}
+
+A lo largo de este \tfg se ha podido ver que existe tecnología suficiente para emular con cierto éxito imágenes propias de determinados contextos, únicamente tendríamos que cambiar los datos de entrenamiento. Podríamos pensar que la eficacia de estos sistemas podría desbancar o perjudicar a los pintores tradicionales, ya que su trabajo puede perder valor al poder generarse automáticamente. \newline
+
+Este \textit{temor} generalizado a que la Inteligencia Artificial y la Robótica nos quiten el empleo no es infundado, ya que medios importantes del país están hablando de este tema en sus columnas de opinión.
+
+\begin{center}
+    \begin{minipage}{0.9\linewidth}
+        \vspace{5pt}%margen superior de minipage
+        {\small
+            Los robots no son nuestros enemigos, sino una de las claves para incrementar nuestra productividad y nuestro bienestar.
+        }
+        \begin{flushright}
+            Juan Ramón Rallo (economista), en su columna \textit{¿Los robots nos están quitando el empleo?} \cite{RamonRallo2019}.
+        \end{flushright}
+        \vspace{3pt}%margen inferior de la minipage
+    \end{minipage}
+\end{center}
+
+\begin{center}
+    \begin{minipage}{0.9\linewidth}
+        \vspace{5pt}%margen superior de minipage
+        {\small
+            La revolución de los robots generará desempleo, pero también riqueza, la clave está en el reparto.
+        }
+        \begin{flushright}
+           Dario Pescador, en su artículo \textit{Cómo te van a quitar tu trabajo los robots} \cite{Pescador2019}.
+        \end{flushright}
+        \vspace{3pt}%margen inferior de la minipage
+    \end{minipage}
+\end{center}
+
+
+La implantación generalizada de robots e inteligencias artificiales puede destruir empleos directos, pero a su vez generar empleos indirectos, como por ejemplo el mantenimiento y mejora del sistema planteado en este \tfg. En ese sentido, podemos argumentar que el sistema desarrollado puede imitar tendencias pictóricas a partir de fotografías, pero ambas fuentes tienen que existir previamente. El estilo del fotógrafo y el del pintor prevalecen, ya que a día de hoy el sistema no es capaz de desarrollar creatividad propiamente dicha. \newline
+
+El fusionar dos estilos diferenciados (fotógrafo y pintor) abre las puertas a nuevas formas de creación artística. Sin ir más lejos, jugando con los datos disponibles de este \tfg podríamos crear un \textit{pintor metaimpresionista}, que posea los rasgos de Monet, Van Gogh y Cézanne. Podemos establacer que \textbf{la Inteligencia Artificial no es un reemplazo del artista, sino una herramienta que lo complementa}. \newline
+
+Por otra parte, en este \tfg se ha abordado la vertiente más \textit{simpática} y artística de esta tecnología, pero las redes GAN, explicadas y utilizadas en este \tfg pueden utilizarse para fines más \textit{oscuros}. El problema de los \textit{deepfakes} (falsificaciones profundas en castellano) ya está aquí \cite{IBMDeveloperAdvocateinSiliconValley2019}, existiendo vídeos de dirigentes políticos como Barack Obama pronunciando discursos falsos. Esto abre las puertas a nuevas formas de desinformación y manipulación política, con el enorme peligro que supone para nuestra democracia. \newline 
+
+Si bien es cierto que hay aplicaciones benévolas, como la creación de muestras médicas para mejorar sistemas de reconocimiento, no podemos descuidar los avances en este sentido. Podcasts como XRey con sus experimentos creando discursos falsos de Franco (pronunciados por él mismo) revelan que es necesario concienciar a la ciudadanía de las ventajas y de los peligros de esta tecnología que supone para nuestra sociedad. \newline
+
+Por otra parte hemos podido ver que el sistema es relativamente costoso (en tiempo y en \textit{hardware}) para un usuario promedio. Sin embargo dichos recursos son fácilmente obtenibles por organizaciones de cierta envergadura, como nuestra escuela, lo que plantea desigualdades de oportunidades para acceder a estos sistemas avanzados. \newline
+
+Asimismo, la necesidad de recurrir a herramientas propietarias como CUDA y de soluciones en la nube como Google Cloud Plataform (especiamente para usuarios que no dispongan de gran capacidad de cómputo en sus ordenadores personales) agrava la dependencia tecnológica que tiene nuestra sociedad hacia las empresas, siendo en su enorme mayoría empresas fuera de la Unión Europea. \newline
+
+En este sentido se torna cada vez más necesaria la inversión a nivel europeo en la creación de \textit{hardware} para reducir nuestra dependencia tecnológica del exterior, más importante aún en estos tiempos convulsos a nivel geopolítco. La compra de empresas como ARM por parte de nVidia \cite{Roca2020} aviva esta necesidad, amén del impacto que tienen las grandes empresas tecnológicas estadounidenses en el desarrollo de tecnologías europeas a nivel de tratamiento de datos y de medios de cómputo. Vemos que los recursos \textit{hardware} están disponibles en cada vez menos manos, por lo que urge recuperar la soberanía europea (tanto de datos como de computación) a través de diversas medidas. \newline
+
+Medioambientamente hablando podemos esgrimir que la máquina puede consumir mucho tiempo de cómputo para desarrollar el entrenamiento del modelo y por tanto gran cantidad de electricidad. Sin embargo, en países como España no es necesariamente un impacto negativo. Podríamos desarrollar una solución en la cual se utilice energía solar, entre otras energías renovables, para generar electricidad que podría utilizar el computador mediante una batería. \newline
+
+Por otra parte, con la implantación masiva de soluciones basadas en computación distribuida, podemos realizar nuestras imágenes con un consumo prácticamente nulo en nuestro terminal (por ejemplo nuestro móvil), recayendo el coste de inferencia en el servidor. Dicho servidor podríamos situarlo en un \textit{datacenter} alimentado por una planta de generación de electricidad renovable, lo que nos permite atajar otro gran problema: el problema demográfico que azota a nuestro país (comúnmente llamado \textit{España vaciada}),  al situar esas plantas de electricidad en localidades \textit{vaciadas} de nuestro país, como Galisteo y Valdeobispo (provincia de Cáceres) \cite{ElPeriodicodelaEnergia2018}.
+
+\newpage
+
+\section{Lineas futuras}
+Aunque este \tfg se ha basado en la implementación del paper \cite{Zhu2017} y en la construcción de un sistema software alrededor de él, eso no cierra las puertas a posibles ampliaciones y mejoras del proyecto, sino todo lo contrario. El autor propone las siguientes líneas futuras:
+
+\begin{itemize}
+    \item Integrar de forma más natural el componente de ampliación de resolución: desarrollo íntegro del sistema en TensorFlow 2 y Keras.
+    \item Construcción de un programa que, a través de una interfaz gráfica, proporcione una mejor experiencia de uso. Para ello se propone adaptar el sistema actual a una arquitectura cliente servidor.
+    \item Mejorar y refinar la implementación para solucionar los problemas de iluminación.
+    \item Utilizar este programa como concepto de estudio por parte de expertos en Impresionismo, con el objetivo de realizar una comparación artística entre el Impresionismo original y los resultados del presente sistema.
+    \item Entrenar al sistema con resoluciones superiores para ofrecer mejores resultados. No obstante, por las limitaciones en las VRAM, sería necesario modificar la implementación para que seleccione automáticamente la máxima resolución con la que podría trabajar.
+    \item Añadir nuevos pintores, ya sea pintores no expuestos en este \tfg o combinaciones de los ya mencionados. Podríamos estudiar cómo pintaría el sistema aprendiendo las técnicas de Monet, Van Gogh y Cézanne simultáneamente y compararlos con los resultados aquí obtenidos.
+\end{itemize}
+
+\end{document}

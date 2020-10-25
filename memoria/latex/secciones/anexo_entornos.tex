@@ -1,0 +1,40 @@
+\documentclass[../main.tex]{subfiles}
+
+\renewcommand{\appendixname}{Anexos}
+
+\begin{document}
+\section{Hardware}
+\subsection{Equipo personal del autor}
+\begin{itemize}
+    \item CPU: Intel Core i7 7700HQ @ 3,80 GHz, con cuatro núcleos, litografía de 14 nm y 6 MB de caché.
+    \item RAM: 8GB DDR4-2400
+    \item HDD: 2.5" SATA con 1TB de almacenamiento a @7200 rpm
+    \item SSD: Crucial MX500 M.2 con 500GB de almacenamiento.
+    \item GPU: nVidia GTX 1050 con 2GB de VRAM GDDR5. Dispone de la arquitectura Pascal y de 640 núcleos CUDA.
+\end{itemize}
+\subsection{Equipo contratado en Google Cloud Plataform}
+
+\begin{itemize}
+    \item Tipo de máquina: n1-standard-4 (4 vCPU, 15 GB RAM)
+    \item GPU: 1x nVidia Tesla T4, con 16GB GDDR6 de VRAM. Dispone de 2560 núcleos CUDA, 320 núcleos \textit{Turing tensor} y de un ancho de banda de +320 GB/s
+    \item SSD: 100GB
+    \item Zona: us-west1-a 
+\end{itemize}
+
+\section{Software}
+
+\begin{itemize}
+    \item Sistemas Operativos: Ubuntu 18.04 LTS y Windows 10 versión 2004.
+    \item Entorno de desarrollo de Python: PyCharm Professional Edition, versión 2020.2.3
+    \item Python 3.6.9
+    \item TensorFlow (y por extensión Tensorboard) 1.14 para el subsistema EnhanceNet y 2.2.1 para el sistema principal
+    \item Keras 2.3.1
+    \item Numpy 1.18.5
+    \item Flask 1.1.2
+    \item Driver nVidia 450.51.05
+    \item Cuda 11.0
+    \item cuDNN 7.6.5
+    \item Pillow 8.0.0
+\end{itemize}
+
+\end{document}

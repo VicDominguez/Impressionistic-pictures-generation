@@ -1,0 +1,230 @@
+%Definimos la clase del documento y cargamos las librerías
+\documentclass[a4paper]{report}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+%paquetes para la portada azul
+\usepackage{afterpage}
+\usepackage{xcolor}
+%Para tener los elementos de texto en español
+\usepackage[spanish]{babel}
+%Hipervinculos para todo lo útil
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+%evitamos que rompa las palabras
+\usepackage[none]{hyphenat}
+%añadir ficheros externos
+\usepackage{subfiles}
+%soporte para anexos
+\usepackage{appendix}
+%importacion automatica de codigo en los anexos
+\usepackage{minted}
+%paquetes para figuras
+\usepackage{caption}
+\usepackage{subcaption}
+
+%Encabezados bonitos
+\pagestyle{headings}
+
+%paquete para poner la bibliografia en la table of contents
+\usepackage[nottoc,notlot,notlof]{tocbibind}
+
+%Cambiamos el espacio en blanco enorme que por defecto hay en las páginas inicio de capítulo
+\usepackage{titlesec}
+\titleformat{\chapter}[display]   
+{\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}   
+\titlespacing*{\chapter}{0pt}{-50pt}{40pt}
+
+%para crear subsubsubsection
+\setcounter{secnumdepth}{4}
+\titleformat{\paragraph}
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titlespacing*{\paragraph}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
+%definimos el azul celeste
+\definecolor{AzulCeleste}{RGB}{31, 130, 192}
+
+%Ruta en la que pondremos las imágenes para el documento
+\graphicspath{ {imagenes/} }
+%Redifinimos el nombre que asigna babel spanish a las tablas (cuadro) a tabla
+\renewcommand{\spanishtablename}{Tabla}
+\renewcommand{\spanishlisttablename}{Índice de tablas}
+\renewcommand{\spanishcontentsname}{Índice}
+\renewcommand{\appendixname}{Anexos}
+\renewcommand{\appendixtocname}{Anexos}
+\renewcommand{\appendixpagename}{Anexos}
+
+% Definimos el comando de página en blanco
+\newcommand\paginablanco{%
+    \null
+    \thispagestyle{empty}%
+    \newpage}
+
+% Definimos el comando de página en blanco sin avanzar numeracion
+\newcommand\paginablancosin{%
+    \paginablanco{}
+    \addtocounter{page}{-1}}
+
+%mayor anchura en las tablas
+\renewcommand{\arraystretch}{1.5}
+%mayor ancuhura en las fraciones
+\newcommand\ddfrac[2]{\frac{\displaystyle #1}{\displaystyle #2}}
+%coamdno escribir TFG
+\newcommand{\tfg}{Trabajo Fin de Grado }
+% Comenzamos el documento
+\begin{document}
+\sloppy 
+% Hacemos la portada
+\begin{titlepage}
+\pagecolor{AzulCeleste}\afterpage{\nopagecolor}
+
+\begin{figure}[!htb]
+   \begin{minipage}{0.5\textwidth}
+     \centering
+     \includegraphics[width=1\textwidth]{logo_upm_bn.png}
+   \end{minipage}\hfill
+   \begin{minipage}{0.5\textwidth}
+     \centering
+     \includegraphics[width=1\textwidth]{logo_etsisi_bn.png}
+   \end{minipage}
+\end{figure}
+
+%{\includegraphics[width=0.5\textwidth]{logo_etsisi_bn.png}\par}
+{\bfseries\Huge \textcolor{white}{Generación de cuadros impresionistas mediante Redes Neuronales} \par}
+\vfill
+{\LARGE \textcolor{white}{Proyecto Fin de Grado} \par}
+\vfill
+{\LARGE \textcolor{white}{Grado en Ingeniería de Computadores} \par}
+\vfill
+{\LARGE \textcolor{white}{Autor:} \par}
+{\LARGE \textcolor{white}{Victor Manuel Domínguez Rivas} \par}
+\vfill
+{\LARGE \textcolor{white}{Tutores:} \par}
+{\LARGE \textcolor{white}{Luis Fernando de Mingo} \par}
+{\LARGE \textcolor{white}{Nuria Gómez Blas} \par}
+\vfill
+{\LARGE \textcolor{white}{Octubre 2020} \par}
+\newpage
+
+\thispagestyle{empty}
+\centering % Para centrar la portada
+% Para entender los siguientes comandos, consúltese los siguientes enlaces
+% https://manualdelatex.com/tutoriales/crear-una-portada
+% https://manualdelatex.com/tutoriales/tipo-de-letra
+{\scshape\Large  Universidad Politécnica de Madrid \par}
+{\scshape\Large Escuela Técnica Superior de Ingeniería de Sistemas Informáticos \par}
+\vfill
+{\includegraphics[width=1\textwidth]{logo_etsisi.png}\par}
+\vfill
+{\bfseries\LARGE Generación de cuadros impresionistas mediante Redes Neuronales \par}
+\vfill
+{\Large Proyecto Fin de Grado \par}
+\vfill
+{\Large Grado en Ingeniería de Computadores \par}
+\vfill
+{\Large Curso académico 2019-2020 \par}
+\vfill
+{\Large Autor: \par}
+{\Large Victor Manuel Domínguez Rivas \par}
+\vfill
+{\Large Tutores: \par}
+{\Large Luis Fernando de Mingo \par}
+{\Large Nuria Gómez Blas \par}
+\end{titlepage}
+
+\paginablancosin{}
+
+\pagenumbering{Roman} % para comenzar la numeracion de paginas en numeros romanos
+
+% Agradecimientos
+\chapter*{}
+\thispagestyle{empty}
+\addcontentsline{toc}{section}{Agradecimientos} % si queremos que aparezca en el índice
+\begin{flushright}
+\textit{A mis tutores por su apoyo en esta ardua tarea \\
+que ha supuesto tanto para mi. \\
+A mis amigos de la universidad, especialmente \\
+a Juan Luis y a Rocío por su apoyo incondicional \\
+y por hacerme tan feliz. \\
+A mi familia por confiar en mí \\
+en momentos tan complicados. \\
+A mis amigos de mi pueblo, especialmente  \\
+a Javi, Polo, Miriam y Ana \\
+por estar siempre a mi lado \\
+a pesar de la distancia. \\
+A Clara y a Sara por ser tan leales \\
+y tan enriquecedoras conmigo. \\
+A Paula, por redescubrirme el arte \\
+y darme la idea de este proyecto. \\
+Y por último a los profesores \\
+que me dieron la motivación \\
+y el apoyo que necesitaba.}
+\end{flushright}
+
+
+\chapter*{Resumen} % si no queremos que añada la palabra "Capitulo"
+\addcontentsline{toc}{section}{Resumen} % si queremos que aparezca en el índice
+Una parte intrínseca del ser humano es la habilidad de crear. El desarrollo de las civilizaciones humanas ha potenciado la creatividad humana con nuevas formas de expresión artística y tendencias rompedoras, a la vez que se convertía un elemento crucial para entender la sociedad del momento. Una de las corrientes artísticas más destacadas en la historia fue el Impresionismo pictórico, que a través de la luz y el color plasmaban en sus cuadros la fugacidad y la incertidumbre del momento, lo continuo y lo indefinido. \newline
+
+Por otra parte, en el último siglo se ha producido una explosión de conocimiento y de avances tecnológicos. La esperanza de vida española aumentó en 40 años durante ese periodo, aparecieron elementos transgresores como la televisión y el computador, se popularizaron masivamente inventos ya existentes como el cine, el teléfono y el automóvil... transformando completamente nuestra sociedad y nuestro estilo de vida. \newline
+
+Uno de estos avances, el computador, ha cobrado aún más importancia en lo que llevamos de siglo XXI. Los increíbles avances en potencia de cálculo, dispositivos, comunicaciones... han sembrado el terreno para que Internet y los ordenadores sean parte intrínseca de nuestras vidas. En este contexto, la Inteligencia Artificial toma cada vez más protagonismo en los últimos tiempos. Por primera vez en la historia de la Humanidad, hemos sido capaces de crear máquinas que toman decisiones por sí solas y con un impacto real y profundo en nuestras vidas. Por tanto suena razonable que nos hagamos la siguiente pregunta: ¿pueden las máquinas crear algo tan humano como es el Arte? \newline
+
+Este \tfg pretende acercar al lector a la Inteligencia Artificial a través de una perspectiva artística. Para ello se han tomado los cuadros de tres grandes pintores impresionistas y postimpresionistas como son Claude Monet, Vicent Van Gogh y Paul Cézanne; con el objetivo de implementar un sistema basado en Redes Neuronales que transforme fotografías en cuadros que el propio lector pueda utilizar en su computador. \newline
+
+Asimismo este documento espera concienciar de forma amena y accesible al lector de los avances producidos en la materia, con el objetivo que adquiera una mirada crítica sobre los sistemas de Inteligencia Artificial que utiliza en su día a día; debido a las cuestiones éticas, morales y sociales que plantean en nuestra sociedad. \newline
+
+\textbf{Palabras clave}: Impresionismo, Inteligencia Artificial, Redes Neuronales, Computación en la nube, Transferencia de estilo
+
+
+\chapter*{Abstract} % si no queremos que añada la palabra "Capitulo"
+\addcontentsline{toc}{section}{Abstract} % si queremos que aparezca en el índice
+
+An intrinsic part of being human is the ability to create. The development of human civilizations has enhanced human creativity with new forms of artistic expression and revolutionary trends; while it has become a crucial element to understand the society of the moment. One of the most prominent artistic movements in history was pictorial Impressionism, using light and color in order to capture the fleetingness and uncertainty of the moment, the continuous and the indefinite in their paintings. \newline
+
+Furthermore, there has been an explosion of knowledge and technological advances during 20th century. Life expectancy increased by 40 years (in Spain) since 1920, transgressive elements such as television and computer appeared on our lives, inventions like cinema, telephone and automovile were massively popularized... transforming completely our society and lifestyle. \newline
+
+One of these advances, the computer, has become even more important in the 21st century. The incredible advances in computing power, devices, communications... facilitated that Internet and computers became an intrinsic part of our lives. In this context, Artificial Intelligence takes more and more prominence nowadays. For the first time in human history, we have been able to create machines that make decisions for themselves and with a real and profound impact on our lives. Therefore we could ask ourselves the following question: can machines create something so human as Art? \newline
+
+This Final Degree Project aims to bring the reader closer to Artificial Intelligence through an artistic perspective. For this objective, the paintings of three great impressionist and post-impressionist artists have been taken, such as Claude Monet, Vicent Van Gogh and Paul Cézanne; aiming to develop a system based on Neural Networks that transforms photographs into pictures that the reader himself can use on his computer. \newline
+
+Finally, the author hopes to make the reader aware about the advances produced in the field in a nicely and accessible way. Also, this document aims of acquiring a critical sense about the Artificial Intelligence systems that the reader uses in his everyday life due to the ethical, moral and social issues that these systems raise in our society. \newline
+
+\textbf{Keywords}: Impressionism, Artificial Intelligence, Neural Networks, Cloud Computing, Style Transfer
+
+\tableofcontents
+\newpage
+\listoftables %ver si hay alguna tabla al final
+\newpage
+\listoffigures
+\newpage
+
+\paginablanco{}
+
+\chapter{Introducción}
+\pagenumbering{arabic}
+\subfile{secciones/introduccion}
+\chapter{Estado del arte}
+\subfile{secciones/estado_arte}
+\chapter{Desarrollo del proyecto}
+\subfile{secciones/desarrollo}
+\chapter{Resultados}
+\subfile{secciones/resultados}
+\chapter{Conclusiones y trabajos futuros}
+\subfile{secciones/conclusiones}
+\newpage
+\subfile{secciones/referencias}
+
+\appendix
+\clearpage
+\addappheadtotoc
+\appendixpage
+
+%\begin{appendices}
+\chapter{Recursos hardware y software utilizados}
+\subfile{secciones/anexo_entornos}
+\chapter{Código fuente del proyecto} %uno o dos anexos??
+\subfile{secciones/anexo_codigo}
+%\end{appendices}
+
+\end{document}
