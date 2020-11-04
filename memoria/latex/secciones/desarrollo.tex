@@ -142,7 +142,7 @@ Por último, los autores crearon más datasets para su nueva arquitectura de red
 \section{Tecnologías utilizadas}
 Dentro del mundo del Machine Learning existen numerosas herramientas de trabajo, siendo un entorno que se renueva a una velocidad de vértigo. \newline
 
-El "verano" que atraviesa la Inteligencia Artificial en general y la Visión Artificial en particular provocan que numerosas instituciones, empresas y particulares apuesten por desarrollar nuevas herramientas o mejorar las ya existentes. Algunos de esos contribuyentes son actores de la industria tan destacados como Google, Facebook y NVIDIA.
+El \textit{verano} que atraviesa la Inteligencia Artificial en general y la Visión Artificial en particular provocan que numerosas instituciones, empresas y particulares apuesten por desarrollar nuevas herramientas o mejorar las ya existentes. Algunos de esos contribuyentes son actores de la industria tan destacados como Google, Facebook y NVIDIA.
 \newline
 
 Por otra parte, en este Trabajo Final de Grado se han utilizado herramientas principalmente de código abierto y con amplia documentación, las cuales se detallan a continuación.
@@ -246,7 +246,7 @@ Se disponen de los siguientes directorios (además del archivo requirements.txt 
     \item configuracion: contiene los archivos de configuración .json.
     \item datasets: recoge los conjuntos de imágenes a utilizar por el sistema (organizados por su nombre) para su entrenamiento y para la generación del conjunto test de resultados.
     \item input: dispone de las fotos que el usuario desee transformar a cuadros.
-    \item logs: contiene los logs del sistema (según dataset y versión del sistema), tanto como los de depuración como los de tensorboard.
+    \item logs: contiene los logs del sistema (según dataset y versión del sistema), tanto como los de depuración como los de TensorBoard.
         \begin{figure}[h!]
             \centering
             \includegraphics[width=1\textwidth]{imagenes/muestra_logs_cyclegan.png}
@@ -306,13 +306,13 @@ En esta sección se explica únicamente las labores que realiza cada módulo de 
     Como el lector habrá supuesto, se encarga de ampliar la imagen que recibe de entrada. Esta función utiliza el sistema ampliador de resolución si está disponible (a través de una petición POST a la API del sistema, pasando la imagen como un string base64 y recibiendo un array de bytes), y en caso contrario amplia la imagen en un factor de aumento (recibido por parámetro).
     
     \paragraph{capas\textunderscore extra}
-    Un módulo muy liviano, únicamente implementa una capa especial mediante una clase para la arquitectura resnet, conocida como \textit{ReflectionPadding2D}.
+    Un módulo muy liviano, únicamente implementa una capa especial mediante una clase para la arquitectura ResNet, conocida como \textit{ReflectionPadding2D}.
     
     \paragraph{cargador\textunderscore imagenes}
     Define la clase CargadorImagenes, la cual alimenta de imágenes a la red en el proceso de entrenamiento de la misma encargándose de la lectura de las imágenes y su preprocesamiento. Asimismo, calcula los n\textunderscore batches que van a ejecutarse durante el entrenamiento. 
     
     \paragraph{cyclegan}
-    Esta es la clase principal del sistema. Contiene la implementación de toda la red, incluyendo los generadores unet y resnet. Se encarga de crear la red, entrenarla, cargar el último punto de guardado del entrenamiento si existe y de guardar la red cuando finaliza el entrenamiento para que pueda ser utilizada en la creación de cuadros. Por último, realiza la inferencia de imágenes (o transformación de cuadro a imagen y viceversa).
+    Esta es la clase principal del sistema. Contiene la implementación de toda la red, incluyendo los generadores unet y ResNet. Se encarga de crear la red, entrenarla, cargar el último punto de guardado del entrenamiento si existe y de guardar la red cuando finaliza el entrenamiento para que pueda ser utilizada en la creación de cuadros. Por último, realiza la inferencia de imágenes (o transformación de cuadro a imagen y viceversa).
     
     \paragraph{lanzadera\textunderscore entreno}
     Arranca el sistema para el entrenamiento de la red, funcionalidad descrita en la sección \ref{seccion:entreno_sistema_cgan}.
@@ -368,15 +368,15 @@ Para ejecutar el código creado en este \tfg tenemos que satisfacer ciertas depe
 \begin{figure}[h!]
     \centering
     \includegraphics[width=1\textwidth]{imagenes/cuadro_versiones_tensorflow_cuda.png}
-    \caption[Requisitos de versiones de nVidia de TensorFlow]{Requisitos de versiones de nVidia de TensorFlow. Extraído de \cite{StackOverflow2018}}
+    \caption[Requisitos de versiones de NVIDIA de TensorFlow]{Requisitos de versiones de NVIDIA de TensorFlow. Extraído de \cite{StackOverflow2018}}
     \label{fig:cuadro_versiones_tensorflow_cuda}
 \end{figure}
 
 Enumeremos el proceso de instalación de las mismas:
 
 \begin{enumerate}
-    \item Disponer de una tarjeta gráfica nVidia en nuestro equipo que soporte (y si no lo tenemos, instalarlo)  como mínimo el driver 418.39 de la propia nVidia para poder instalar una versión CUDA igual o superior a 10.1. Se recomienda que disponga de al menos 2GB de VRAM para realizar la creación de cuadros.
-    \item Instalaremos como mínimo CUDA 10.1 siguiendo el tutorial oficial de nVidia: \url{https://docs.nvidia.com/cuda/archive/10.1/index.html}
+    \item Disponer de una tarjeta gráfica NVIDIA en nuestro equipo que soporte (y si no lo tenemos, instalarlo)  como mínimo el driver 418.39 de la propia NVIDIA para poder instalar una versión CUDA igual o superior a 10.1. Se recomienda que disponga de al menos 2GB de VRAM para realizar la creación de cuadros.
+    \item Instalaremos como mínimo CUDA 10.1 siguiendo el tutorial oficial de NVIDIA: \url{https://docs.nvidia.com/cuda/archive/10.1/index.html}
     \item Tras ello, instalamos la versión 7.6 para la versión de CUDA que hayamos instalado, siguiendo nuevamente el tutorial oficial \url{https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html}
     \item Si aún no lo tenemos instalado, descargamos el intérprete de Python y lo instalamos. Se recomienda utilizar un Entorno Integrado de Desarrollo (o IDE) como PyCharm.
     \item Si queremos ejecutar el sistema principal, necesitaremos tener instalado Git ya que es obligatorio para instalar dos dependencias concretas. Se puede instalar siguiendo la siguiente ayuda: \url{https://git-scm.com/book/en/v2/Getting-Started-Installing-Git}

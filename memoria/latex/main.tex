@@ -43,6 +43,7 @@
 
 %definimos el azul celeste
 \definecolor{AzulCeleste}{RGB}{31, 130, 192}
+\definecolor{AzulCeleste2}{RGB}{135, 206, 250}
 
 %Ruta en la que pondremos las imágenes para el documento
 \graphicspath{ {imagenes/} }
@@ -76,34 +77,34 @@
 \sloppy 
 % Hacemos la portada
 \begin{titlepage}
-\pagecolor{AzulCeleste}\afterpage{\nopagecolor}
+\pagecolor{AzulCeleste2}\afterpage{\nopagecolor}
 
 \begin{figure}[!htb]
-   \begin{minipage}{0.5\textwidth}
+   \begin{minipage}{0.45\textwidth}
      \centering
-     \includegraphics[width=1\textwidth]{logo_upm_bn.png}
+     \includegraphics[width=1\textwidth]{logo_upm.png}
    \end{minipage}\hfill
-   \begin{minipage}{0.5\textwidth}
+   \begin{minipage}{0.45\textwidth}
      \centering
-     \includegraphics[width=1\textwidth]{logo_etsisi_bn.png}
+     \includegraphics[width=1\textwidth]{logo_etsisi.png}
    \end{minipage}
 \end{figure}
 
 %{\includegraphics[width=0.5\textwidth]{logo_etsisi_bn.png}\par}
-{\bfseries\Huge \textcolor{white}{Generación de cuadros impresionistas mediante Redes Neuronales} \par}
+{\bfseries\Huge \textcolor{black}{Generación de cuadros impresionistas mediante Redes Neuronales} \par}
 \vfill
-{\LARGE \textcolor{white}{Proyecto Fin de Grado} \par}
+{\huge \textcolor{black}{Proyecto Fin de Grado} \par}
 \vfill
-{\LARGE \textcolor{white}{Grado en Ingeniería de Computadores} \par}
+{\huge \textcolor{black}{Grado en Ingeniería de Computadores} \par}
 \vfill
-{\LARGE \textcolor{white}{Autor:} \par}
-{\LARGE \textcolor{white}{Victor Manuel Domínguez Rivas} \par}
+{\huge \textcolor{black}{Autor:} \par}
+{\huge \textcolor{black}{Victor Manuel Domínguez Rivas} \par}
 \vfill
-{\LARGE \textcolor{white}{Tutores:} \par}
-{\LARGE \textcolor{white}{Luis Fernando de Mingo} \par}
-{\LARGE \textcolor{white}{Nuria Gómez Blas} \par}
+{\huge \textcolor{black}{Tutores:} \par}
+{\huge \textcolor{black}{Luis Fernando de Mingo} \par}
+{\huge \textcolor{black}{Nuria Gómez Blas} \par}
 \vfill
-{\LARGE \textcolor{white}{Octubre 2020} \par}
+{\huge \textcolor{black}{Octubre 2020} \par}
 \newpage
 
 \thispagestyle{empty}
@@ -161,6 +162,8 @@ que me dieron la motivación \\
 y el apoyo que necesitaba.}
 \end{flushright}
 
+\newpage
+\paginablanco{}
 
 \chapter*{Resumen} % si no queremos que añada la palabra "Capitulo"
 \addcontentsline{toc}{section}{Resumen} % si queremos que aparezca en el índice
@@ -170,12 +173,14 @@ Por otra parte, en el último siglo se ha producido una explosión de conocimien
 
 Uno de estos avances, el computador, ha cobrado aún más importancia en lo que llevamos de siglo XXI. Los increíbles avances en potencia de cálculo, dispositivos, comunicaciones... han sembrado el terreno para que Internet y los ordenadores sean parte intrínseca de nuestras vidas. En este contexto, la Inteligencia Artificial toma cada vez más protagonismo en los últimos tiempos. Por primera vez en la historia de la Humanidad, hemos sido capaces de crear máquinas que toman decisiones por sí solas y con un impacto real y profundo en nuestras vidas. Por tanto suena razonable que nos hagamos la siguiente pregunta: ¿pueden las máquinas crear algo tan humano como es el Arte? \newline
 
-Este \tfg pretende acercar al lector a la Inteligencia Artificial a través de una perspectiva artística. Para ello se han tomado los cuadros de tres grandes pintores impresionistas y postimpresionistas como son Claude Monet, Vicent Van Gogh y Paul Cézanne; con el objetivo de implementar un sistema basado en Redes Neuronales que transforme fotografías en cuadros que el propio lector pueda utilizar en su computador. \newline
+Este \tfg pretende acercar al lector a la Inteligencia Artificial a través de una perspectiva artística. Para ello se han tomado los cuadros de tres grandes pintores impresionistas y postimpresionistas como son Claude Monet, Vincent Van Gogh y Paul Cézanne; con el objetivo de implementar un sistema basado en Redes Neuronales que transforme fotografías en cuadros que el propio lector pueda utilizar en su computador. \newline
 
 Asimismo este documento espera concienciar de forma amena y accesible al lector de los avances producidos en la materia, con el objetivo que adquiera una mirada crítica sobre los sistemas de Inteligencia Artificial que utiliza en su día a día; debido a las cuestiones éticas, morales y sociales que plantean en nuestra sociedad. \newline
 
 \textbf{Palabras clave}: Impresionismo, Inteligencia Artificial, Redes Neuronales, Computación en la nube, Transferencia de estilo
 
+\newpage
+\paginablanco{}
 
 \chapter*{Abstract} % si no queremos que añada la palabra "Capitulo"
 \addcontentsline{toc}{section}{Abstract} % si queremos que aparezca en el índice
@@ -186,15 +191,13 @@ Furthermore, there has been an explosion of knowledge and technological advances
 
 One of these advances, the computer, has become even more important in the 21st century. The incredible advances in computing power, devices, communications... facilitated that Internet and computers became an intrinsic part of our lives. In this context, Artificial Intelligence takes more and more prominence nowadays. For the first time in human history, we have been able to create machines that make decisions for themselves and with a real and profound impact on our lives. Therefore we could ask ourselves the following question: can machines create something so human as Art? \newline
 
-This Final Degree Project aims to bring the reader closer to Artificial Intelligence through an artistic perspective. For this objective, the paintings of three great impressionist and post-impressionist artists have been taken, such as Claude Monet, Vicent Van Gogh and Paul Cézanne; aiming to develop a system based on Neural Networks that transforms photographs into pictures that the reader himself can use on his computer. \newline
+This Final Degree Project aims to bring the reader closer to Artificial Intelligence through an artistic perspective. For this objective, the paintings of three great impressionist and post-impressionist artists have been taken, such as Claude Monet, Vincent Van Gogh and Paul Cézanne; aiming to develop a system based on Neural Networks that transforms photographs into pictures that the reader himself can use on his computer. \newline
 
 Finally, the author hopes to make the reader aware about the advances produced in the field in a nicely and accessible way. Also, this document aims of acquiring a critical sense about the Artificial Intelligence systems that the reader uses in his everyday life due to the ethical, moral and social issues that these systems raise in our society. \newline
 
 \textbf{Keywords}: Impressionism, Artificial Intelligence, Neural Networks, Cloud Computing, Style Transfer
 
 \tableofcontents
-\newpage
-\listoftables %ver si hay alguna tabla al final
 \newpage
 \listoffigures
 \newpage
@@ -204,12 +207,19 @@ Finally, the author hopes to make the reader aware about the advances produced i
 \chapter{Introducción}
 \pagenumbering{arabic}
 \subfile{secciones/introduccion}
+\newpage
+\paginablanco{}
 \chapter{Estado del arte}
 \subfile{secciones/estado_arte}
+\newpage
+\paginablanco{}
 \chapter{Desarrollo del proyecto}
 \subfile{secciones/desarrollo}
+\newpage
 \chapter{Resultados}
 \subfile{secciones/resultados}
+\newpage
+\paginablanco{}
 \chapter{Conclusiones y trabajos futuros}
 \subfile{secciones/conclusiones}
 \newpage
