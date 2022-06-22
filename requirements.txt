@@ -3,5 +3,5 @@ tensorflow==2.2.1
 tensorflow_datasets
 git+https://github.com/tensorflow/examples.git
 git+https://www.github.com/keras-team/keras-contrib.git
-numpy==1.18.5
+numpy==1.22.0
 matplotlib
