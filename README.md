@@ -1,19 +1,27 @@
-# Trabajo Fin de Grado de Ingeniería de Computadores
-_Generación de cuadros impresionistas mediante Redes Neuronales_ por Victor Manuel Domínguez Rivas.
+<div align="center">
+    <h3 align="center">Impressionistic pictures generation</h3>
+    <p>Final Degree Project to apply impressionistic style on pictures using Neural Networks.</p>
+</div>
 
-Parte de mis estudios de _Doble Grado en Ingeniería de Computadores y Tecnologías para la Sociedad de la Información_.
+## Table of Contents
 
-Realizado en la Escuela Técnica Superior de Ingenieros de Sistemas Informáticos (ETSISI), Universidad Politécnica de Madrid.
+- [🤔 What is this project?](#-what-is-this-project)
+- [🎯 Key Features](#-key-features)
 
-## Elementos disponibles en este repositorio
-+ Memoria del proyecto. Se dispone tanto en formato PDF como en LaTeX, 
-junto con todos los documentos necesarios para su compilación. Dicha memoria se puede encontrar también en el Archivo Digital UPM (http://oa.upm.es)
-+ Presentación de la defensa del proyecto, documento disponible con extensiones pptx y pdf.
-+ Implementación del sistema principal (Cycle GAN).
-+ Los archivos necesarios para reutilizar las redes usadas en la generación de los ejemplos de la memoria, junto con 
-los pesos para continuar el entrenamiento de las mismas. Para vangogh2photo, debido a los límites de almacenamiento de
-GitHub, únicamente se provee el fichero de pesos (comprimido en formato .zip).
+## 🤔 What is this project?
 
-La implementación del sistema de ampliación se puede encontrar en el siguiente enlace: 
-https://github.com/VicDominguez/EnhanceNet-TFG
+This repo contains my Final Degree Project of Computer Engineering, *Generation of impressionistic pictures using Neural Networks*, done on October 2020. This Final Degree Project aims to bring the reader closer to Artificial Intelligence through an artistic perspective. 
+
+For this objective, the paintings of three great impressionist and post-impressionist artists have been taken, such as Claude Monet, Vincent Van Gogh and Paul Cézanne; aiming to develop a system based on Neural Networks that transforms photographs into pictures that the reader himself can use on his computer.
+
+
+## 🎯 Key Features
+
+- Implementation of CycleGAN neural network on Keras and Tensorflow 2.
+- Config files used on my thesis.
+- Weigths of trained neural networks.
+- For *cezzane2photo* and *monet2photo*, saved model in .h5 format with model optimizer state to resume training, architecture and config. For *vangogh2photo* was not possible due to size limits.
+- Whole ocumentation presented: book (LaTeX and pdf) and presentation (pptx and pdf) (only on Spanish). All documents were written only on Spanish.
+
+
 
